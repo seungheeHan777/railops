@@ -1,6 +1,51 @@
-# API 명세
+﻿# API 명세
 
-이 문서는 RailOps의 REST API 초안입니다. 구현 단계에서 실제 DTO 이름, 검증 규칙, 에러 코드는 조정할 수 있습니다.
+이 문서는 RailOps의 REST API 설계 초안입니다. API는 프론트엔드와 백엔드가 서로 데이터를 주고받는 약속입니다.
+
+## API와 DTO가 무엇인가
+
+### API
+
+API는 클라이언트가 서버 기능을 호출하는 입구입니다.
+
+예를 들어 사용자가 로그인 버튼을 누르면 프론트엔드는 백엔드에 다음 요청을 보냅니다.
+
+```http
+POST /api/auth/login
+```
+
+백엔드는 이메일과 비밀번호를 확인한 뒤 로그인 결과를 JSON으로 응답합니다.
+
+### DTO
+
+DTO는 Data Transfer Object의 약자입니다. 화면과 서버 사이에서 주고받는 데이터 모양을 정한 객체입니다.
+
+예를 들어 로그인 요청 DTO는 이런 모양입니다.
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password1234"
+}
+```
+
+Spring Boot에서는 보통 다음처럼 클래스로 만듭니다.
+
+```java
+public record LoginRequest(
+    String email,
+    String password
+) {}
+```
+
+DTO를 쓰는 이유:
+
+- DB Entity를 그대로 외부에 노출하지 않기 위해
+- 화면에서 필요한 값만 주고받기 위해
+- 입력값 검증을 명확히 하기 위해
+- API 문서와 Controller 코드를 맞추기 위해
+
+즉, `docs/05-api-spec.md`는 나중에 Controller와 DTO를 만들 때 기준이 되는 문서입니다.
 
 ## 공통 규칙
 
@@ -10,7 +55,7 @@ Base URL:
 /api
 ```
 
-공통 응답 형식:
+공통 성공 응답:
 
 ```json
 {
@@ -31,13 +76,13 @@ Base URL:
 }
 ```
 
-인증:
+인증 헤더:
 
 ```http
 Authorization: Bearer {accessToken}
 ```
 
-## Auth
+## Auth API
 
 ### 회원가입
 
@@ -45,7 +90,7 @@ Authorization: Bearer {accessToken}
 POST /api/auth/signup
 ```
 
-Request:
+Request DTO: `SignupRequest`
 
 ```json
 {
@@ -55,7 +100,7 @@ Request:
 }
 ```
 
-Response:
+Response DTO: `UserSummaryResponse`
 
 ```json
 {
@@ -66,13 +111,20 @@ Response:
 }
 ```
 
+검증 규칙:
+
+- email은 필수이며 이메일 형식이어야 함
+- password는 필수이며 최소 길이 필요
+- name은 필수
+- email은 중복될 수 없음
+
 ### 로그인
 
 ```http
 POST /api/auth/login
 ```
 
-Request:
+Request DTO: `LoginRequest`
 
 ```json
 {
@@ -81,7 +133,7 @@ Request:
 }
 ```
 
-Response:
+Response DTO: `LoginResponse`
 
 ```json
 {
@@ -96,13 +148,15 @@ Response:
 }
 ```
 
-### 내 정보
+### 내 정보 조회
 
 ```http
 GET /api/auth/me
 ```
 
 권한: 로그인 사용자
+
+Response DTO: `UserSummaryResponse`
 
 ### 로그아웃
 
@@ -112,12 +166,25 @@ POST /api/auth/logout
 
 1차 구현에서는 클라이언트 토큰 삭제 중심으로 처리합니다. 서버 측 refresh token 또는 blacklist는 후순위입니다.
 
-## Stations
+## Station API
 
 ### 역 목록
 
 ```http
 GET /api/stations
+```
+
+Response DTO: `StationResponse[]`
+
+```json
+[
+  {
+    "id": 1,
+    "name": "서울",
+    "code": "SEOUL",
+    "city": "서울"
+  }
+]
 ```
 
 ### 역 검색
@@ -126,7 +193,9 @@ GET /api/stations
 GET /api/stations/search?keyword=서울
 ```
 
-## Train Schedules
+Response DTO: `StationResponse[]`
+
+## Train Schedule API
 
 ### 운행편 검색
 
@@ -134,7 +203,7 @@ GET /api/stations/search?keyword=서울
 GET /api/train-schedules?from=SEOUL&to=BUSAN&date=2026-08-01
 ```
 
-Response:
+Response DTO: `TrainScheduleSearchResponse[]`
 
 ```json
 [
@@ -152,10 +221,10 @@ Response:
 ]
 ```
 
-캐시:
+캐시 정책:
 
 - Redis에 30초 캐시합니다.
-- 예매 정합성과 직접 관련된 좌석 상태는 캐시에 의존하지 않습니다.
+- 좌석 상태와 예매 정합성은 캐시에 의존하지 않습니다.
 
 ### 운행편 상세
 
@@ -163,7 +232,9 @@ Response:
 GET /api/train-schedules/{scheduleId}
 ```
 
-## Seats
+Response DTO: `TrainScheduleDetailResponse`
+
+## Seat API
 
 ### 운행편 좌석 조회
 
@@ -171,7 +242,7 @@ GET /api/train-schedules/{scheduleId}
 GET /api/train-schedules/{scheduleId}/seats
 ```
 
-Response:
+Response DTO: `ScheduleSeatMapResponse`
 
 ```json
 {
@@ -193,7 +264,7 @@ Response:
 }
 ```
 
-## Reservations
+## Reservation API
 
 ### 좌석 임시 점유와 예매 생성
 
@@ -203,7 +274,7 @@ POST /api/reservations/hold
 
 권한: 로그인 사용자
 
-Request:
+Request DTO: `ReservationHoldRequest`
 
 ```json
 {
@@ -212,7 +283,7 @@ Request:
 }
 ```
 
-Response:
+Response DTO: `ReservationHoldResponse`
 
 ```json
 {
@@ -226,13 +297,14 @@ Response:
 }
 ```
 
-실패 예시:
+실패 케이스:
 
 - 이미 HELD인 좌석
 - 이미 RESERVED인 좌석
 - BLOCKED 좌석
 - 취소된 운행편
 - 로그인하지 않은 사용자
+- 선택 좌석 목록이 비어 있음
 
 ### 내 예매 목록
 
@@ -242,6 +314,8 @@ GET /api/reservations/me
 
 권한: 로그인 사용자
 
+Response DTO: `ReservationSummaryResponse[]`
+
 ### 예매 상세
 
 ```http
@@ -249,6 +323,8 @@ GET /api/reservations/{reservationId}
 ```
 
 권한: 본인 또는 ADMIN
+
+Response DTO: `ReservationDetailResponse`
 
 ### 예매 취소
 
@@ -258,12 +334,14 @@ POST /api/reservations/{reservationId}/cancel
 
 권한: 본인 또는 ADMIN
 
+Response DTO: `ReservationDetailResponse`
+
 정책:
 
 - 출발 전 예매만 취소 가능
 - 1차 구현에서는 결제 완료 후 환불 상태를 단순화
 
-## Payments
+## Payment API
 
 ### 가상 결제 성공
 
@@ -273,10 +351,14 @@ POST /api/payments/{paymentId}/simulate-success
 
 권한: 로그인 사용자
 
+Response DTO: `PaymentResultResponse`
+
 정책:
 
+- Payment가 READY인지 확인
 - Reservation이 PENDING_PAYMENT인지 확인
 - ScheduleSeat가 HELD인지 확인
+- `held_by_user_id`가 요청 사용자와 같은지 확인
 - `hold_expires_at`이 지나지 않았는지 확인
 - 성공 시 Payment SUCCESS, Reservation CONFIRMED, ScheduleSeat RESERVED 처리
 
@@ -286,15 +368,19 @@ POST /api/payments/{paymentId}/simulate-success
 POST /api/payments/{paymentId}/simulate-fail
 ```
 
+Response DTO: `PaymentResultResponse`
+
 ### 가상 결제 취소
 
 ```http
 POST /api/payments/{paymentId}/simulate-cancel
 ```
 
-## Admin
+Response DTO: `PaymentResultResponse`
 
-권한: ADMIN
+## Admin API
+
+모든 Admin API 권한: ADMIN
 
 ### 역 관리
 
@@ -306,6 +392,16 @@ PATCH /api/admin/stations/{stationId}
 DELETE /api/admin/stations/{stationId}
 ```
 
+Request DTO 예시: `StationCreateRequest`
+
+```json
+{
+  "name": "서울",
+  "code": "SEOUL",
+  "city": "서울"
+}
+```
+
 ### 노선 관리
 
 ```http
@@ -314,6 +410,16 @@ GET /api/admin/routes
 GET /api/admin/routes/{routeId}
 PATCH /api/admin/routes/{routeId}
 DELETE /api/admin/routes/{routeId}
+```
+
+Request DTO 예시: `RouteCreateRequest`
+
+```json
+{
+  "name": "경부선",
+  "originStationId": 1,
+  "destinationStationId": 2
+}
 ```
 
 ### 열차 관리
@@ -356,11 +462,40 @@ GET /api/admin/reservations/{reservationId}
 GET /api/admin/operation-logs?action=PAYMENT_SUCCESS&from=2026-08-01&to=2026-08-31
 ```
 
-## Monitoring
+## Monitoring API
 
 ```http
 GET /actuator/health
 GET /actuator/prometheus
+```
+
+## 주요 DTO 목록
+
+```text
+SignupRequest
+LoginRequest
+LoginResponse
+UserSummaryResponse
+StationResponse
+StationCreateRequest
+StationUpdateRequest
+RouteCreateRequest
+RouteUpdateRequest
+TrainCreateRequest
+TrainUpdateRequest
+TrainScheduleCreateRequest
+TrainScheduleUpdateRequest
+TrainScheduleSearchResponse
+TrainScheduleDetailResponse
+ScheduleSeatMapResponse
+CarSeatResponse
+SeatResponse
+ReservationHoldRequest
+ReservationHoldResponse
+ReservationSummaryResponse
+ReservationDetailResponse
+PaymentResultResponse
+OperationLogResponse
 ```
 
 ## 주요 에러 코드 초안
@@ -370,7 +505,9 @@ AUTH_REQUIRED
 ACCESS_DENIED
 USER_NOT_FOUND
 INVALID_CREDENTIALS
+DUPLICATE_EMAIL
 STATION_NOT_FOUND
+DUPLICATE_STATION_CODE
 ROUTE_NOT_FOUND
 TRAIN_NOT_FOUND
 SCHEDULE_NOT_FOUND
@@ -387,4 +524,25 @@ PAYMENT_NOT_FOUND
 PAYMENT_NOT_READY
 HOLD_EXPIRED
 CONCURRENCY_CONFLICT
+```
+
+## 이 문서 다음 단계
+
+이 API 명세를 기준으로 Spring Boot에서 다음 코드를 작성합니다.
+
+```text
+Controller
+- API 주소와 HTTP 메서드를 받는 클래스
+
+Request DTO
+- 클라이언트가 보내는 JSON을 받는 클래스
+
+Response DTO
+- 클라이언트에 내려줄 JSON을 만드는 클래스
+
+Service
+- 실제 비즈니스 로직을 처리하는 클래스
+
+Exception Handler
+- 에러 응답 형식을 통일하는 클래스
 ```

@@ -1,4 +1,4 @@
-﻿# RailOps
+# RailOps
 
 RailOps는 좌석 선택 기반 철도 예매 시스템을 Spring Boot 중심으로 구현하는 백엔드/운영형 포트폴리오 프로젝트입니다. 단순한 CRUD 예매 서비스가 아니라, 좌석 임시 점유, 가상 결제, 중복 예매 방지, 로그, 모니터링, Docker 기반 배포까지 포함해 운영 가능한 시스템을 학습하고 설명할 수 있도록 설계합니다.
 
@@ -101,3 +101,10 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 
 - `docs/16-screen-map.md`: 메인, 사용자, 관리자 화면 구성
 - `docs/17-backend-implementation-plan.md`: Spring Boot 백엔드 구현 순서
+- `docs/18-database-ddl.md`: PostgreSQL DDL 초안
+- `docs/19-test-scenarios.md`: 인증, 예매, 결제, Scheduler, 동시성 테스트 시나리오
+- `docs/20-backend-setup-notes.md`: Spring Boot 백엔드 생성과 초기 공통 설정 기록
+- `docs/21-auth-implementation-notes.md`: User, 회원가입, 로그인, JWT access token 구현 기록
+- `docs/22-station-implementation-notes.md`: Station 도메인과 공개/관리자 API 구현 기록
+- `docs/23-frontend-implementation-notes.md`: 현재 완성된 백엔드 기능에 대응하는 React 1차 UI 구현 기록
+- `docs/24-route-implementation-notes.md`: Route 도메인과 관리자 API 구현 기록
