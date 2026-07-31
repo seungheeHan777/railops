@@ -42,15 +42,28 @@ RailOps 프로젝트 진행 상태를 추적하는 문서입니다. Codex와 후
 - [x] Route 관리자 CRUD API 구현
 - [x] Route 생성/수정 검증 구현
 - [x] Route 단위 테스트 통과
+- [x] Train 도메인 구현
+- [x] Train 관리자 CRUD API 구현
+- [x] Train 번호 중복 검증 구현
+- [x] Train 단위 테스트 통과
+- [x] Car 도메인 구현
+- [x] Seat 도메인 구현
+- [x] Car 관리자 CRUD API 구현
+- [x] Seat 관리자 CRUD API 구현
+- [x] Car/Seat 단위 테스트 통과
+- [x] TrainSchedule 도메인 구현
+- [x] TrainSchedule 관리자 CRUD API 구현
+- [x] TrainSchedule 사용자 검색 API 구현
+- [x] TrainSchedule 시간 겹침 검증 구현
+- [x] TrainSchedule 단위 테스트 통과
 
 ## 다음 작업 후보
 
-1. Train 도메인과 관리자 CRUD API를 구현한다.
-2. Train 타입과 train_no 중복 정책을 정리한다.
-3. Car/Seat 도메인 설계를 구현 코드로 옮긴다.
-4. TrainSchedule 도메인과 관리자 CRUD API를 구현한다.
-5. Route 관리자 화면을 프론트엔드에 추가한다.
-6. Docker Desktop 실행 후 Testcontainers 통합 테스트 환경을 다시 활성화한다.
+1. ScheduleSeat 생성 정책을 정리하고 구현한다.
+2. 운행편 생성 시 물리 Seat를 ScheduleSeat로 복사하는 흐름을 구현한다.
+3. Route/Train/Car/Seat/TrainSchedule 관리자 화면을 프론트엔드에 추가한다.
+4. 사용자 열차 검색 화면을 TrainSchedule API에 연결한다.
+5. Docker Desktop 실행 후 Testcontainers 통합 테스트 환경을 다시 활성화한다.
 
 ## 보류 중인 결정
 

@@ -108,3 +108,6 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - `docs/22-station-implementation-notes.md`: Station 도메인과 공개/관리자 API 구현 기록
 - `docs/23-frontend-implementation-notes.md`: 현재 완성된 백엔드 기능에 대응하는 React 1차 UI 구현 기록
 - `docs/24-route-implementation-notes.md`: Route 도메인과 관리자 API 구현 기록
+- `docs/25-train-implementation-notes.md`: Train 도메인과 관리자 API 구현 기록
+- `docs/26-car-seat-implementation-notes.md`: Car/Seat 도메인과 관리자 API 구현 기록
+- `docs/27-train-schedule-implementation-notes.md`: TrainSchedule 도메인과 관리자/사용자 조회 API 구현 기록

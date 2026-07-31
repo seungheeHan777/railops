@@ -1,4 +1,4 @@
-﻿# API 명세
+# API 명세
 
 이 문서는 RailOps의 REST API 설계 초안입니다. API는 프론트엔드와 백엔드가 서로 데이터를 주고받는 약속입니다.
 
@@ -232,7 +232,7 @@ Response DTO: `TrainScheduleSearchResponse[]`
 GET /api/train-schedules/{scheduleId}
 ```
 
-Response DTO: `TrainScheduleDetailResponse`
+Response DTO: `TrainScheduleResponse`
 
 ## Seat API
 
@@ -432,6 +432,117 @@ PATCH /api/admin/trains/{trainId}
 DELETE /api/admin/trains/{trainId}
 ```
 
+Request DTO 예시: `TrainCreateRequest`
+
+```json
+{
+  "trainNo": "KTX-101",
+  "trainType": "KTX",
+  "name": "KTX 101"
+}
+```
+
+Response DTO 예시: `TrainResponse`
+
+```json
+{
+  "id": 1,
+  "trainNo": "KTX-101",
+  "trainType": "KTX",
+  "name": "KTX 101"
+}
+```
+
+검증 규칙:
+
+- `trainNo`는 필수이며 중복될 수 없음
+- `trainNo`와 `trainType`은 영문, 숫자, `_`, `-`만 허용
+- `trainNo`와 `trainType`은 저장 시 대문자로 정규화
+- `name`은 필수
+
+### 객차 관리
+
+```http
+POST /api/admin/trains/{trainId}/cars
+GET /api/admin/trains/{trainId}/cars
+GET /api/admin/cars/{carId}
+PATCH /api/admin/cars/{carId}
+DELETE /api/admin/cars/{carId}
+```
+
+Request DTO 예시: `CarCreateRequest`
+
+```json
+{
+  "carNo": 1,
+  "seatCount": 56
+}
+```
+
+Response DTO 예시: `CarResponse`
+
+```json
+{
+  "id": 10,
+  "trainId": 1,
+  "trainNo": "KTX-101",
+  "trainType": "KTX",
+  "carNo": 1,
+  "seatCount": 56
+}
+```
+
+검증 규칙:
+
+- `carNo`는 열차 안에서 중복될 수 없음
+- `seatCount`는 1 이상이어야 함
+
+### 물리 좌석 관리
+
+```http
+POST /api/admin/cars/{carId}/seats
+GET /api/admin/cars/{carId}/seats
+GET /api/admin/seats/{seatId}
+PATCH /api/admin/seats/{seatId}
+DELETE /api/admin/seats/{seatId}
+```
+
+Request DTO 예시: `SeatCreateRequest`
+
+```json
+{
+  "seatNo": "12A",
+  "seatType": "WINDOW"
+}
+```
+
+Response DTO 예시: `SeatResponse`
+
+```json
+{
+  "id": 100,
+  "carId": 10,
+  "trainId": 1,
+  "carNo": 1,
+  "seatNo": "12A",
+  "seatType": "WINDOW"
+}
+```
+
+좌석 타입:
+
+```text
+STANDARD
+PRIORITY
+WINDOW
+AISLE
+```
+
+검증 규칙:
+
+- `seatNo`는 객차 안에서 중복될 수 없음
+- `seatNo`는 저장 시 대문자로 정규화
+- `seatType`은 지정된 enum 값만 허용
 ### 운행 편성 관리
 
 ```http
@@ -440,7 +551,68 @@ GET /api/admin/train-schedules
 GET /api/admin/train-schedules/{scheduleId}
 PATCH /api/admin/train-schedules/{scheduleId}
 PATCH /api/admin/train-schedules/{scheduleId}/status
+DELETE /api/admin/train-schedules/{scheduleId}
 ```
+
+Request DTO 예시: `TrainScheduleCreateRequest`
+
+```json
+{
+  "trainId": 1,
+  "routeId": 1,
+  "operationDate": "2026-08-01",
+  "departureTime": "2026-08-01T09:00:00",
+  "arrivalTime": "2026-08-01T11:40:00"
+}
+```
+
+Status 변경 Request DTO 예시: `TrainScheduleStatusUpdateRequest`
+
+```json
+{
+  "status": "DELAYED"
+}
+```
+
+Response DTO 예시: `TrainScheduleResponse`
+
+```json
+{
+  "id": 1,
+  "trainId": 1,
+  "trainNo": "KTX-101",
+  "trainType": "KTX",
+  "routeId": 1,
+  "routeName": "경부선",
+  "originStationId": 1,
+  "originStationName": "서울",
+  "originStationCode": "SEOUL",
+  "destinationStationId": 2,
+  "destinationStationName": "부산",
+  "destinationStationCode": "BUSAN",
+  "operationDate": "2026-08-01",
+  "departureTime": "2026-08-01T09:00:00",
+  "arrivalTime": "2026-08-01T11:40:00",
+  "status": "SCHEDULED"
+}
+```
+
+운행편 상태:
+
+```text
+SCHEDULED
+DELAYED
+CANCELED
+COMPLETED
+```
+
+검증 규칙:
+
+- Train이 존재해야 함
+- Route가 존재해야 함
+- arrivalTime은 departureTime보다 늦어야 함
+- operationDate는 departureTime의 날짜와 같아야 함
+- 같은 Train의 운행 시간이 기존 운행편과 겹칠 수 없음
 
 ### 좌석 관리
 
@@ -483,13 +655,20 @@ RouteCreateRequest
 RouteUpdateRequest
 TrainCreateRequest
 TrainUpdateRequest
+CarCreateRequest
+CarUpdateRequest
+CarResponse
+SeatCreateRequest
+SeatUpdateRequest
+SeatResponse
 TrainScheduleCreateRequest
 TrainScheduleUpdateRequest
+TrainScheduleStatusUpdateRequest
+TrainScheduleResponse
 TrainScheduleSearchResponse
 TrainScheduleDetailResponse
 ScheduleSeatMapResponse
 CarSeatResponse
-SeatResponse
 ReservationHoldRequest
 ReservationHoldResponse
 ReservationSummaryResponse
@@ -510,8 +689,14 @@ STATION_NOT_FOUND
 DUPLICATE_STATION_CODE
 ROUTE_NOT_FOUND
 TRAIN_NOT_FOUND
+DUPLICATE_TRAIN_NO
+CAR_NOT_FOUND
+DUPLICATE_CAR_NO
+DUPLICATE_SEAT_NO
 SCHEDULE_NOT_FOUND
 SCHEDULE_NOT_BOOKABLE
+INVALID_SCHEDULE_TIME
+TRAIN_SCHEDULE_CONFLICT
 SEAT_NOT_FOUND
 SEAT_NOT_AVAILABLE
 SEAT_ALREADY_HELD
