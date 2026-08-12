@@ -296,7 +296,8 @@ created_at
 
 - 하나의 Reservation은 하나 이상의 ReservationSeat를 가집니다.
 - 같은 `schedule_seat_id`가 CONFIRMED 예매에 중복 포함되면 안 됩니다.
-- 1차 가격 정책은 구현 전 다시 결정합니다.
+- 1차 가격 정책은 거리/노선/좌석 타입과 무관한 단일 기본요금입니다.
+- price는 예약 당시 확정된 좌석별 거래 가격으로 보존합니다.
 
 ## Payment
 
@@ -365,3 +366,15 @@ ADMIN_BLOCK_SEAT
 ADMIN_UNBLOCK_SEAT
 LOGIN_FAILED
 ```
+
+## FarePolicy
+
+1차 구현에서는 별도 Entity를 아직 만들지 않습니다. 정책은 `docs/33-fare-policy-notes.md`에 기록합니다.
+
+현재 결정:
+
+```text
+모든 좌석 가격 = 단일 기본요금
+```
+
+향후 구현 시 단일 기본요금을 저장하는 `fare_policies` 또는 `app_settings` 계열 테이블을 추가하고, HOLD 생성 시 `ReservationSeat.price`, `Reservation.totalAmount`, `Payment.amount`에 반영합니다.

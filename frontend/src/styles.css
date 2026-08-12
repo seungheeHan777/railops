@@ -572,3 +572,231 @@ code {
     padding: 16px;
   }
 }
+.status-strip.expanded {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 0 14px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #d7e0e8;
+}
+
+.admin-tabs button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border-radius: 6px;
+  color: #566478;
+  background: #f4f7fa;
+  white-space: nowrap;
+}
+
+.admin-tabs button.active {
+  color: #0f3d4d;
+  background: #dff2f0;
+}
+
+.admin-pane {
+  display: grid;
+  gap: 18px;
+}
+
+.management-form {
+  display: grid;
+  gap: 12px;
+  align-items: end;
+}
+
+.station-form,
+.route-form,
+.train-form,
+.car-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.seat-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+}
+
+.schedule-form {
+  grid-template-columns: minmax(140px, 0.9fr) minmax(140px, 1.1fr) minmax(130px, 0.8fr) minmax(170px, 1fr) minmax(170px, 1fr) auto;
+}
+
+.form-actions {
+  min-height: 40px;
+  align-items: end;
+}
+
+.field select,
+.inline-select {
+  width: 100%;
+  height: 40px;
+  padding: 0 34px 0 11px;
+  color: #1c2430;
+  background: #ffffff;
+  border: 1px solid #c9d4df;
+  border-radius: 6px;
+  outline: none;
+}
+
+.field select:focus,
+.inline-select:focus {
+  border-color: #176b87;
+  box-shadow: 0 0 0 3px rgba(23, 107, 135, 0.16);
+}
+
+.inline-select {
+  min-width: 132px;
+  height: 34px;
+}
+
+.schedule-search {
+  grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) minmax(150px, 0.8fr) auto;
+  align-items: end;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #253140;
+  background: #e6edf3;
+}
+
+.status-badge.scheduled {
+  color: #174f36;
+  background: #e7f5ee;
+}
+
+.status-badge.delayed {
+  color: #684f13;
+  background: #fff2c2;
+}
+
+.status-badge.canceled {
+  color: #7d2230;
+  background: #ffe1e5;
+}
+
+.status-badge.completed {
+  color: #234d73;
+  background: #e2f0ff;
+}
+
+.detail-list {
+  margin-top: 16px;
+}
+
+.schedule-seat-tools {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.seat-map-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #d7e0e8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.seat-car {
+  display: grid;
+  gap: 10px;
+}
+
+.seat-car h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #1c2430;
+}
+
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 8px;
+}
+
+.seat-cell {
+  min-height: 112px;
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  padding: 10px;
+  border: 1px solid #cfd9e4;
+  border-radius: 8px;
+  color: #253140;
+  background: #f8fafc;
+}
+
+.seat-cell strong {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.seat-cell span,
+.seat-cell em {
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.seat-cell.available {
+  border-color: #9ed4b3;
+  background: #edf8f1;
+}
+
+.seat-cell.held {
+  border-color: #e7cc78;
+  background: #fff8dd;
+}
+
+.seat-cell.reserved {
+  border-color: #9bbfe0;
+  background: #edf6ff;
+}
+
+.seat-cell.blocked {
+  border-color: #e09aa6;
+  background: #fff0f2;
+}
+@media (max-width: 1100px) {
+  .station-form,
+  .route-form,
+  .train-form,
+  .car-form,
+  .seat-form,
+  .schedule-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .status-strip.expanded,
+  .station-form,
+  .route-form,
+  .train-form,
+  .car-form,
+  .seat-form,
+  .schedule-form,
+  .schedule-search {
+    grid-template-columns: 1fr;
+  }
+}

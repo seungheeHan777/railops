@@ -254,9 +254,11 @@ Response DTO: `ScheduleSeatMapResponse`
       "seats": [
         {
           "scheduleSeatId": 10,
+          "seatId": 100,
           "seatNo": "12A",
           "seatType": "WINDOW",
-          "status": "AVAILABLE"
+          "status": "AVAILABLE",
+          "holdExpiresAt": null
         }
       ]
     }
@@ -621,6 +623,10 @@ PATCH /api/admin/schedule-seats/{scheduleSeatId}/block
 PATCH /api/admin/schedule-seats/{scheduleSeatId}/unblock
 ```
 
+권한: ADMIN
+
+Response DTO: `ScheduleSeatResponse`
+
 ### 전체 예매 조회
 
 ```http
@@ -698,6 +704,7 @@ SCHEDULE_NOT_BOOKABLE
 INVALID_SCHEDULE_TIME
 TRAIN_SCHEDULE_CONFLICT
 SEAT_NOT_FOUND
+SCHEDULE_SEAT_NOT_FOUND
 SEAT_NOT_AVAILABLE
 SEAT_ALREADY_HELD
 SEAT_ALREADY_RESERVED

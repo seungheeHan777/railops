@@ -12,6 +12,7 @@ import com.railops.schedule.dto.TrainScheduleSearchResponse;
 import com.railops.schedule.dto.TrainScheduleStatusUpdateRequest;
 import com.railops.schedule.dto.TrainScheduleUpdateRequest;
 import com.railops.schedule.repository.TrainScheduleRepository;
+import com.railops.seat.service.ScheduleSeatService;
 import com.railops.train.domain.Train;
 import com.railops.train.repository.TrainRepository;
 import java.time.LocalDate;
@@ -32,15 +33,18 @@ public class TrainScheduleService {
     private final TrainScheduleRepository trainScheduleRepository;
     private final TrainRepository trainRepository;
     private final RouteRepository routeRepository;
+    private final ScheduleSeatService scheduleSeatService;
 
     public TrainScheduleService(
         TrainScheduleRepository trainScheduleRepository,
         TrainRepository trainRepository,
-        RouteRepository routeRepository
+        RouteRepository routeRepository,
+        ScheduleSeatService scheduleSeatService
     ) {
         this.trainScheduleRepository = trainScheduleRepository;
         this.trainRepository = trainRepository;
         this.routeRepository = routeRepository;
+        this.scheduleSeatService = scheduleSeatService;
     }
 
     public List<TrainScheduleResponse> findAll() {
@@ -83,7 +87,9 @@ public class TrainScheduleService {
             request.departureTime(),
             request.arrivalTime()
         );
-        return TrainScheduleResponse.from(trainScheduleRepository.save(schedule));
+        TrainSchedule savedSchedule = trainScheduleRepository.save(schedule);
+        scheduleSeatService.createAvailableSeatsForSchedule(savedSchedule);
+        return TrainScheduleResponse.from(savedSchedule);
     }
 
     @Transactional

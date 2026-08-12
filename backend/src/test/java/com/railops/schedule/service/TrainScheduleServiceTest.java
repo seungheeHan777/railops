@@ -18,6 +18,7 @@ import com.railops.schedule.dto.TrainScheduleSearchResponse;
 import com.railops.schedule.dto.TrainScheduleStatusUpdateRequest;
 import com.railops.schedule.dto.TrainScheduleUpdateRequest;
 import com.railops.schedule.repository.TrainScheduleRepository;
+import com.railops.seat.service.ScheduleSeatService;
 import com.railops.station.domain.Station;
 import com.railops.train.domain.Train;
 import com.railops.train.repository.TrainRepository;
@@ -44,11 +45,19 @@ class TrainScheduleServiceTest {
     @Mock
     private RouteRepository routeRepository;
 
+    @Mock
+    private ScheduleSeatService scheduleSeatService;
+
     private TrainScheduleService trainScheduleService;
 
     @BeforeEach
     void setUp() {
-        trainScheduleService = new TrainScheduleService(trainScheduleRepository, trainRepository, routeRepository);
+        trainScheduleService = new TrainScheduleService(
+            trainScheduleRepository,
+            trainRepository,
+            routeRepository,
+            scheduleSeatService
+        );
     }
 
     @Test
@@ -78,6 +87,7 @@ class TrainScheduleServiceTest {
         assertThat(response.trainNo()).isEqualTo("KTX-101");
         assertThat(response.routeName()).isEqualTo("경부선");
         assertThat(response.status()).isEqualTo(TrainScheduleStatus.SCHEDULED);
+        verify(scheduleSeatService).createAvailableSeatsForSchedule(schedule);
     }
 
     @Test

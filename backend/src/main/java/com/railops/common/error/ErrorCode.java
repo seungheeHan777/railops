@@ -26,6 +26,7 @@ public enum ErrorCode {
     INVALID_SCHEDULE_TIME(HttpStatus.BAD_REQUEST, "INVALID_SCHEDULE_TIME", "운행 시간이 올바르지 않습니다."),
     TRAIN_SCHEDULE_CONFLICT(HttpStatus.CONFLICT, "TRAIN_SCHEDULE_CONFLICT", "같은 열차의 운행 시간이 겹칩니다."),
     SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "SEAT_NOT_FOUND", "좌석 정보를 찾을 수 없습니다."),
+    SCHEDULE_SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "SCHEDULE_SEAT_NOT_FOUND", "운행편 좌석 정보를 찾을 수 없습니다."),
     SEAT_NOT_AVAILABLE(HttpStatus.CONFLICT, "SEAT_NOT_AVAILABLE", "선택한 좌석을 예매할 수 없습니다."),
     SEAT_ALREADY_HELD(HttpStatus.CONFLICT, "SEAT_ALREADY_HELD", "이미 임시 점유된 좌석입니다."),
     SEAT_ALREADY_RESERVED(HttpStatus.CONFLICT, "SEAT_ALREADY_RESERVED", "이미 예매된 좌석입니다."),

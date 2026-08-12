@@ -71,8 +71,9 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - 내 정보 조회
 - 열차 검색
 - 운행편 상세 조회
+- 운행편 좌석 맵 조회
 - 객차/좌석 선택
-- 좌석 임시 점유
+- 좌석 임시 점유(HOLD)
 - 가상 결제
 - 내 예매 목록 조회
 - 예매 상세 조회
@@ -84,6 +85,7 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - 노선 관리
 - 열차 관리
 - 운행 편성 관리
+- 운행편 좌석 조회
 - 좌석 BLOCK / UNBLOCK
 - 전체 예매 조회
 - 운영 로그 조회
@@ -111,3 +113,10 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - `docs/25-train-implementation-notes.md`: Train 도메인과 관리자 API 구현 기록
 - `docs/26-car-seat-implementation-notes.md`: Car/Seat 도메인과 관리자 API 구현 기록
 - `docs/27-train-schedule-implementation-notes.md`: TrainSchedule 도메인과 관리자/사용자 조회 API 구현 기록
+- `docs/28-frontend-management-implementation-notes.md`: 현재 백엔드 기능에 대응하는 프론트 관리자/운행편 검색 화면 구현 기록
+- `docs/29-database-local-setup-notes.md`: 로컬 PostgreSQL 연결과 실행 설정 기록
+- `docs/30-schedule-seat-implementation-notes.md`: ScheduleSeat와 운행편 좌석 맵/API/UI 구현 기록
+- `docs/31-reservation-hold-implementation-notes.md`: 좌석 HOLD, Reservation 생성, HOLD 만료 Scheduler 구현 기록
+- `docs/32-payment-simulation-implementation-notes.md`: Payment 시뮬레이션과 예매/좌석 상태 확정 구현 기록
+- `docs/33-fare-policy-notes.md`: 1차 단일 기본요금 정책과 향후 가격 테이블 확장 방향 기록
+- `docs/34-current-progress-summary.md`: 현재 구현/DB/프론트/다음 작업 진행상황 요약
