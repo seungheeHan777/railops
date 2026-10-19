@@ -74,4 +74,3 @@ volumes:
   railops-postgres-data:
   railops-prometheus-data:
   railops-grafana-data:
-
