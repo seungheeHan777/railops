@@ -23,6 +23,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.security:spring-security-oauth2-jose'
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	runtimeOnly 'org.postgresql:postgresql'
@@ -36,6 +40,7 @@ dependencies {
 	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testImplementation 'org.yaml:snakeyaml'
 }
 
 tasks.named('test') {

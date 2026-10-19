@@ -10,6 +10,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleReferenceConflict(Exception exception) {
+        return ResponseEntity.status(409).body(ApiResponse.error(ErrorCode.RESOURCE_IN_USE.message(), "RESOURCE_IN_USE"));
+    }
 
     @ExceptionHandler({org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
         org.springframework.web.bind.MissingServletRequestParameterException.class,
@@ -49,6 +55,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
+        log.error("Unhandled API error", exception);
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         return ResponseEntity
             .status(errorCode.status())

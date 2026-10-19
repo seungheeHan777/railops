@@ -76,6 +76,7 @@ class ReservationServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock private com.railops.operation.OperationLogService logs;
     private ReservationService reservationService;
 
     @BeforeEach
@@ -88,7 +89,7 @@ class ReservationServiceTest {
             scheduleSeatRepository,
             userRepository,
             FIXED_CLOCK,
-            new FareProperties(new BigDecimal("50000"))
+            new FareProperties(new BigDecimal("50000")), logs
         );
     }
 
@@ -102,8 +103,8 @@ class ReservationServiceTest {
         ScheduleSeat seatA = scheduleSeatWithId(1000L, schedule, seatWithId(200L, car, "12A", SeatType.WINDOW));
         ScheduleSeat seatB = scheduleSeatWithId(1001L, schedule, seatWithId(201L, car, "12B", SeatType.AISLE));
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(trainScheduleRepository.findById(100L)).thenReturn(Optional.of(schedule));
+        when(userRepository.findByIdForShare(1L)).thenReturn(Optional.of(user));
+        when(trainScheduleRepository.findByIdForShare(100L)).thenReturn(Optional.of(schedule));
         when(scheduleSeatRepository.findAllByIdInForUpdate(List.of(1000L, 1001L))).thenReturn(List.of(seatA, seatB));
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> {
             Reservation reservation = invocation.getArgument(0);
@@ -152,8 +153,8 @@ class ReservationServiceTest {
         );
         scheduleSeat.block();
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(trainScheduleRepository.findById(100L)).thenReturn(Optional.of(schedule));
+        when(userRepository.findByIdForShare(1L)).thenReturn(Optional.of(user));
+        when(trainScheduleRepository.findByIdForShare(100L)).thenReturn(Optional.of(schedule));
         when(scheduleSeatRepository.findAllByIdInForUpdate(List.of(1000L))).thenReturn(List.of(scheduleSeat));
 
         assertThatThrownBy(() -> reservationService.hold(
@@ -177,8 +178,8 @@ class ReservationServiceTest {
             seatWithId(200L, carWithId(20L, train, 1), "12A", SeatType.WINDOW)
         );
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(trainScheduleRepository.findById(100L)).thenReturn(Optional.of(requestedSchedule));
+        when(userRepository.findByIdForShare(1L)).thenReturn(Optional.of(user));
+        when(trainScheduleRepository.findByIdForShare(100L)).thenReturn(Optional.of(requestedSchedule));
         when(scheduleSeatRepository.findAllByIdInForUpdate(List.of(1000L))).thenReturn(List.of(scheduleSeat));
 
         assertThatThrownBy(() -> reservationService.hold(

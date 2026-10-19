@@ -31,13 +31,14 @@ class AuthServiceTest {
 
     private PasswordEncoder passwordEncoder;
     private JwtTokenProvider jwtTokenProvider;
+    @Mock private com.railops.operation.OperationLogService logs;
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
         passwordEncoder = new BCryptPasswordEncoder();
         jwtTokenProvider = new JwtTokenProvider("railops-test-secret-key-for-auth-service", 3600);
-        authService = new AuthService(userRepository, passwordEncoder, jwtTokenProvider);
+        authService = new AuthService(userRepository, passwordEncoder, jwtTokenProvider, logs);
     }
 
     @Test

@@ -15,6 +15,7 @@ public class UserPrincipal implements UserDetails {
     private final String name;
     private final Collection<? extends GrantedAuthority> authorities;
     private final boolean active;
+    private final long tokenVersion;
 
     private UserPrincipal(User user) {
         this.id = user.getId();
@@ -23,6 +24,7 @@ public class UserPrincipal implements UserDetails {
         this.name = user.getName();
         this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
         this.active = user.isActive();
+        this.tokenVersion = user.getTokenVersion();
     }
 
     public static UserPrincipal from(User user) {
@@ -32,6 +34,8 @@ public class UserPrincipal implements UserDetails {
     public Long getId() {
         return id;
     }
+
+    public long getTokenVersion() { return tokenVersion; }
 
     public String getEmail() {
         return email;

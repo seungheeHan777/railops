@@ -1,6 +1,7 @@
 package com.railops.seat.service;
 
 import com.railops.common.error.BusinessException;
+import com.railops.operation.*;
 import com.railops.common.error.ErrorCode;
 import com.railops.schedule.domain.TrainSchedule;
 import com.railops.schedule.repository.TrainScheduleRepository;
@@ -27,15 +28,17 @@ public class ScheduleSeatService {
     private final ScheduleSeatRepository scheduleSeatRepository;
     private final TrainScheduleRepository trainScheduleRepository;
     private final SeatRepository seatRepository;
+    private final OperationLogService logs;
 
     public ScheduleSeatService(
         ScheduleSeatRepository scheduleSeatRepository,
         TrainScheduleRepository trainScheduleRepository,
-        SeatRepository seatRepository
+        SeatRepository seatRepository, OperationLogService logs
     ) {
         this.scheduleSeatRepository = scheduleSeatRepository;
         this.trainScheduleRepository = trainScheduleRepository;
         this.seatRepository = seatRepository;
+        this.logs = logs;
     }
 
     public ScheduleSeatMapResponse getSeatMap(Long scheduleId) {
@@ -74,6 +77,7 @@ public class ScheduleSeatService {
         ScheduleSeat scheduleSeat = getScheduleSeat(scheduleSeatId);
         if (scheduleSeat.getStatus() != ScheduleSeatStatus.AVAILABLE) throw new BusinessException(ErrorCode.SEAT_NOT_AVAILABLE);
         scheduleSeat.block();
+        logs.record(OperationAction.SEAT_BLOCKED, "SCHEDULE_SEAT", scheduleSeatId);
         return ScheduleSeatResponse.from(scheduleSeat);
     }
 
@@ -82,6 +86,7 @@ public class ScheduleSeatService {
         ScheduleSeat scheduleSeat = getScheduleSeat(scheduleSeatId);
         if (scheduleSeat.getStatus() != ScheduleSeatStatus.BLOCKED) throw new BusinessException(ErrorCode.SEAT_NOT_AVAILABLE);
         scheduleSeat.unblock();
+        logs.record(OperationAction.SEAT_UNBLOCKED, "SCHEDULE_SEAT", scheduleSeatId);
         return ScheduleSeatResponse.from(scheduleSeat);
     }
 

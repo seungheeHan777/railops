@@ -32,11 +32,13 @@ class RouteServiceTest {
     @Mock
     private StationRepository stationRepository;
 
+    @Mock private com.railops.config.CatalogGuard guard;
+
     private RouteService routeService;
 
     @BeforeEach
     void setUp() {
-        routeService = new RouteService(routeRepository, stationRepository);
+        routeService = new RouteService(routeRepository, stationRepository, guard);
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.railops.route.service;
 
+import com.railops.config.CatalogGuard;
+
 import com.railops.common.error.BusinessException;
 import com.railops.common.error.ErrorCode;
 import com.railops.route.domain.Route;
@@ -16,11 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class RouteService {
+    private final CatalogGuard guard;
 
     private final RouteRepository routeRepository;
     private final StationRepository stationRepository;
 
-    public RouteService(RouteRepository routeRepository, StationRepository stationRepository) {
+    public RouteService(RouteRepository routeRepository, StationRepository stationRepository, CatalogGuard guard) {
+        this.guard = guard;
         this.routeRepository = routeRepository;
         this.stationRepository = stationRepository;
     }
@@ -49,6 +53,7 @@ public class RouteService {
 
     @Transactional
     public RouteResponse update(Long routeId, RouteUpdateRequest request) {
+        guard.route(routeId);
         Route route = getRoute(routeId);
         validateDifferentStations(request.originStationId(), request.destinationStationId());
 
@@ -69,6 +74,7 @@ public class RouteService {
 
     @Transactional
     public void delete(Long routeId) {
+        guard.route(routeId);
         Route route = getRoute(routeId);
         routeRepository.delete(route);
     }
@@ -79,6 +85,7 @@ public class RouteService {
     }
 
     private Station getStation(Long stationId) {
+        guard.reference(Station.class, stationId);
         return stationRepository.findById(stationId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STATION_NOT_FOUND));
     }

@@ -1,5 +1,7 @@
 package com.railops.station.service;
 
+import com.railops.config.CatalogGuard;
+
 import com.railops.common.error.BusinessException;
 import com.railops.common.error.ErrorCode;
 import com.railops.station.domain.Station;
@@ -14,10 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class StationService {
+    private final CatalogGuard guard;
 
     private final StationRepository stationRepository;
 
-    public StationService(StationRepository stationRepository) {
+    public StationService(StationRepository stationRepository, CatalogGuard guard) {
+        this.guard = guard;
         this.stationRepository = stationRepository;
     }
 
@@ -60,6 +64,7 @@ public class StationService {
 
     @Transactional
     public StationResponse update(Long stationId, StationUpdateRequest request) {
+        guard.station(stationId);
         Station station = getStation(stationId);
         String code = normalizeCode(request.code());
 
@@ -73,6 +78,7 @@ public class StationService {
 
     @Transactional
     public void delete(Long stationId) {
+        guard.station(stationId);
         Station station = getStation(stationId);
         stationRepository.delete(station);
     }

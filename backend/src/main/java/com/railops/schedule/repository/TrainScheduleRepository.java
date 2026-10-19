@@ -9,6 +9,15 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TrainScheduleRepository extends JpaRepository<TrainSchedule, Long> {
+    @org.springframework.data.jpa.repository.Query("select s.train.id from TrainSchedule s where s.id = :id")
+    java.util.Optional<Long> findTrainId(@org.springframework.data.repository.query.Param("id") Long id);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_READ)
+    @org.springframework.data.jpa.repository.Query("select s from TrainSchedule s where s.id = :id")
+    java.util.Optional<TrainSchedule> findByIdForShare(@org.springframework.data.repository.query.Param("id") Long id);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select s from TrainSchedule s where s.id = :id")
+    java.util.Optional<TrainSchedule> findByIdForUpdate(@org.springframework.data.repository.query.Param("id") Long id);
 
     List<TrainSchedule> findAllByOrderByDepartureTimeAsc();
 
@@ -19,16 +28,26 @@ public interface TrainScheduleRepository extends JpaRepository<TrainSchedule, Lo
         Collection<TrainScheduleStatus> statuses
     );
 
+    @org.springframework.data.jpa.repository.Query("""
+        select (count(s) > 0) from TrainSchedule s where s.train.id = :trainId
+        and s.departureTime < :arrivalTime and s.arrivalTime > :departureTime
+        and s.status <> com.railops.schedule.domain.TrainScheduleStatus.CANCELED
+        """)
     boolean existsByTrain_IdAndDepartureTimeLessThanAndArrivalTimeGreaterThan(
-        Long trainId,
-        LocalDateTime arrivalTime,
-        LocalDateTime departureTime
+        @org.springframework.data.repository.query.Param("trainId") Long trainId,
+        @org.springframework.data.repository.query.Param("arrivalTime") LocalDateTime arrivalTime,
+        @org.springframework.data.repository.query.Param("departureTime") LocalDateTime departureTime
     );
 
+    @org.springframework.data.jpa.repository.Query("""
+        select (count(s) > 0) from TrainSchedule s where s.train.id = :trainId
+        and s.departureTime < :arrivalTime and s.arrivalTime > :departureTime and s.id <> :id
+        and s.status <> com.railops.schedule.domain.TrainScheduleStatus.CANCELED
+        """)
     boolean existsByTrain_IdAndDepartureTimeLessThanAndArrivalTimeGreaterThanAndIdNot(
-        Long trainId,
-        LocalDateTime arrivalTime,
-        LocalDateTime departureTime,
-        Long id
+        @org.springframework.data.repository.query.Param("trainId") Long trainId,
+        @org.springframework.data.repository.query.Param("arrivalTime") LocalDateTime arrivalTime,
+        @org.springframework.data.repository.query.Param("departureTime") LocalDateTime departureTime,
+        @org.springframework.data.repository.query.Param("id") Long id
     );
 }

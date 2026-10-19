@@ -1,0 +1,8 @@
+.idea/
+.env
+.env.*
+!.env.example
+*.log
+*.dump
+*.backup
+backups/

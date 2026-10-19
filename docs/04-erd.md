@@ -95,7 +95,7 @@ erDiagram
 
     TRAIN_SCHEDULES ||--o{ RESERVATIONS : reserved_on
     RESERVATIONS ||--o{ RESERVATION_SEATS : includes
-    SCHEDULE_SEATS ||--o| RESERVATION_SEATS : selected_as
+    SCHEDULE_SEATS ||--o{ RESERVATION_SEATS : historical_selection
     RESERVATIONS ||--|| PAYMENTS : paid_by
 
     USERS {
@@ -105,6 +105,7 @@ erDiagram
         varchar name
         varchar role
         varchar status
+        bigint token_version
         timestamp created_at
         timestamp updated_at
     }
@@ -219,12 +220,10 @@ erDiagram
 
     OPERATION_LOGS {
         bigint id PK
-        bigint actor_id FK
+        bigint actor_id
         varchar action
         varchar target_type
         bigint target_id
-        text detail
-        varchar ip_address
         timestamp created_at
     }
 ```

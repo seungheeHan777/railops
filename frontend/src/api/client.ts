@@ -41,6 +41,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const payload = (await response.json().catch(() => null)) as ApiResponse<T> | null;
 
   if (!response.ok || !payload?.success) {
+    if (response.status === 401 && payload?.code === 'AUTH_REQUIRED' && options.token
+      && localStorage.getItem('railops.accessToken') === options.token) {
+      window.dispatchEvent(new Event('railops:session-expired'));
+    }
     throw new ApiError(
       payload?.message ?? '요청 처리에 실패했습니다.',
       payload?.code ?? null,

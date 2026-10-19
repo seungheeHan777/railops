@@ -1,6 +1,13 @@
 package com.railops.schedule.service;
 
 import com.railops.common.error.BusinessException;
+import com.railops.config.CatalogGuard;
+import com.railops.operation.*;
+import com.railops.payment.service.PaymentService;
+import com.railops.payment.repository.PaymentRepository;
+import com.railops.reservation.repository.ReservationRepository;
+import com.railops.seat.repository.ScheduleSeatRepository;
+import java.time.Clock;
 import com.railops.common.error.ErrorCode;
 import com.railops.route.domain.Route;
 import com.railops.route.repository.RouteRepository;
@@ -34,17 +41,27 @@ public class TrainScheduleService {
     private final TrainRepository trainRepository;
     private final RouteRepository routeRepository;
     private final ScheduleSeatService scheduleSeatService;
+    private final CatalogGuard guard;
+    private final ReservationRepository reservations;
+    private final PaymentRepository payments;
+    private final PaymentService paymentService;
+    private final ScheduleSeatRepository seats;
+    private final OperationLogService logs;
+    private final Clock clock;
 
     public TrainScheduleService(
         TrainScheduleRepository trainScheduleRepository,
         TrainRepository trainRepository,
         RouteRepository routeRepository,
-        ScheduleSeatService scheduleSeatService
+        ScheduleSeatService scheduleSeatService, CatalogGuard guard, ReservationRepository reservations,
+        PaymentRepository payments, PaymentService paymentService, ScheduleSeatRepository seats, OperationLogService logs, Clock clock
     ) {
         this.trainScheduleRepository = trainScheduleRepository;
         this.trainRepository = trainRepository;
         this.routeRepository = routeRepository;
         this.scheduleSeatService = scheduleSeatService;
+        this.guard = guard; this.reservations = reservations; this.payments = payments;
+        this.paymentService = paymentService; this.seats = seats; this.logs = logs; this.clock = clock;
     }
 
     public List<TrainScheduleResponse> findAll() {
@@ -75,6 +92,7 @@ public class TrainScheduleService {
 
     @Transactional
     public TrainScheduleResponse create(TrainScheduleCreateRequest request) {
+        guard.serializeTrain(request.trainId());
         validateTime(request.operationDate(), request.departureTime(), request.arrivalTime());
         validateTrainTimeConflict(request.trainId(), request.departureTime(), request.arrivalTime());
 
@@ -94,7 +112,10 @@ public class TrainScheduleService {
 
     @Transactional
     public TrainScheduleResponse update(Long scheduleId, TrainScheduleUpdateRequest request) {
-        TrainSchedule schedule = getSchedule(scheduleId);
+        Long trainId = trainScheduleRepository.findTrainId(scheduleId).orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_FOUND));
+        guard.serializeTrain(trainId);
+        TrainSchedule schedule = lockSchedule(scheduleId);
+        if (reservations.existsByTrainSchedule_Id(scheduleId)) throw new BusinessException(ErrorCode.RESOURCE_IN_USE);
         validateTime(request.operationDate(), request.departureTime(), request.arrivalTime());
         validateTrainTimeConflictExceptSelf(
             schedule.getTrain().getId(),
@@ -110,15 +131,32 @@ public class TrainScheduleService {
 
     @Transactional
     public TrainScheduleResponse updateStatus(Long scheduleId, TrainScheduleStatusUpdateRequest request) {
-        TrainSchedule schedule = getSchedule(scheduleId);
+        TrainSchedule schedule = lockSchedule(scheduleId);
+        var current = schedule.getStatus();
+        if ((current == TrainScheduleStatus.CANCELED || current == TrainScheduleStatus.COMPLETED) && current != request.status()) {
+            throw new BusinessException(ErrorCode.INVALID_SCHEDULE_STATUS);
+        }
+        if (request.status() == TrainScheduleStatus.COMPLETED && schedule.getArrivalTime().isAfter(LocalDateTime.now(clock))) {
+            throw new BusinessException(ErrorCode.INVALID_SCHEDULE_STATUS);
+        }
+        if (request.status() == TrainScheduleStatus.CANCELED && current != TrainScheduleStatus.CANCELED) {
+            for (Long id : payments.findIdsBySchedule(scheduleId)) paymentService.cancelForSchedule(id);
+            logs.record(OperationAction.SCHEDULE_CANCELED, "SCHEDULE", scheduleId);
+        }
         schedule.updateStatus(request.status());
         return TrainScheduleResponse.from(schedule);
     }
 
     @Transactional
     public void delete(Long scheduleId) {
-        TrainSchedule schedule = getSchedule(scheduleId);
+        TrainSchedule schedule = lockSchedule(scheduleId);
+        if (reservations.existsByTrainSchedule_Id(scheduleId)) throw new BusinessException(ErrorCode.RESOURCE_IN_USE);
+        seats.deleteByScheduleId(scheduleId);
         trainScheduleRepository.delete(schedule);
+    }
+
+    private TrainSchedule lockSchedule(Long id) {
+        return trainScheduleRepository.findByIdForUpdate(id).orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_FOUND));
     }
 
     private TrainSchedule getSchedule(Long scheduleId) {
@@ -132,6 +170,7 @@ public class TrainScheduleService {
     }
 
     private Route getRoute(Long routeId) {
+        guard.reference(Route.class, routeId);
         return routeRepository.findById(routeId)
             .orElseThrow(() -> new BusinessException(ErrorCode.ROUTE_NOT_FOUND));
     }

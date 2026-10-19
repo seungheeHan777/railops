@@ -27,11 +27,20 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/api/auth/signup", "/api/auth/login", "/actuator/health").permitAll()
+                .requestMatchers("/api/auth/signup", "/api/auth/login", "/actuator/health", "/actuator/prometheus").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/stations", "/api/stations/search", "/api/train-schedules", "/api/train-schedules/*", "/api/train-schedules/*/seats").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(errors -> errors
+                .authenticationEntryPoint((request, response, exception) -> {
+                    response.setStatus(401); response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false,\"data\":null,\"code\":\"AUTH_REQUIRED\",\"message\":\"로그인이 필요합니다.\"}");
+                })
+                .accessDeniedHandler((request, response, exception) -> {
+                    response.setStatus(403); response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false,\"data\":null,\"code\":\"ACCESS_DENIED\",\"message\":\"접근 권한이 없습니다.\"}");
+                }))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .build();
     }

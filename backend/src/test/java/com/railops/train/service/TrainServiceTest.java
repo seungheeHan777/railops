@@ -27,11 +27,13 @@ class TrainServiceTest {
     @Mock
     private TrainRepository trainRepository;
 
+    @Mock private com.railops.config.CatalogGuard guard;
+
     private TrainService trainService;
 
     @BeforeEach
     void setUp() {
-        trainService = new TrainService(trainRepository);
+        trainService = new TrainService(trainRepository, guard);
     }
 
     @Test

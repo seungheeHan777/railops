@@ -2,6 +2,7 @@ package com.railops.reservation.service;
 
 import com.railops.auth.security.UserPrincipal;
 import com.railops.config.FareProperties;
+import com.railops.operation.*;
 import com.railops.common.error.BusinessException;
 import com.railops.common.error.ErrorCode;
 import com.railops.payment.domain.Payment;
@@ -43,6 +44,7 @@ public class ReservationService {
     private final UserRepository userRepository;
     private final Clock clock;
     private final FareProperties fares;
+    private final OperationLogService logs;
 
     public ReservationService(
         ReservationRepository reservationRepository,
@@ -52,7 +54,8 @@ public class ReservationService {
         ScheduleSeatRepository scheduleSeatRepository,
         UserRepository userRepository,
         Clock clock,
-        FareProperties fares
+        FareProperties fares,
+        OperationLogService logs
     ) {
         this.reservationRepository = reservationRepository;
         this.reservationSeatRepository = reservationSeatRepository;
@@ -62,13 +65,15 @@ public class ReservationService {
         this.userRepository = userRepository;
         this.clock = clock;
         this.fares = fares;
+        this.logs = logs;
     }
 
     @Transactional
     public ReservationHoldResponse hold(UserPrincipal principal, ReservationHoldRequest request) {
-        User user = userRepository.findById(principal.getId())
+        User user = userRepository.findByIdForShare(principal.getId())
             .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        TrainSchedule schedule = trainScheduleRepository.findById(request.scheduleId())
+        if (!user.isActive() || user.getTokenVersion() != principal.getTokenVersion()) throw new BusinessException(ErrorCode.AUTH_REQUIRED);
+        TrainSchedule schedule = trainScheduleRepository.findByIdForShare(request.scheduleId())
             .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_FOUND));
         validateBookable(schedule);
 
@@ -98,6 +103,7 @@ public class ReservationService {
             Payment.createReady(reservation, generatePaymentNo(user.getId(), now), amount, now)
         );
 
+        logs.record(OperationAction.RESERVATION_HELD, "RESERVATION", reservation.getId());
         return new ReservationHoldResponse(
             reservation.getId(),
             reservation.getReservationNo(),

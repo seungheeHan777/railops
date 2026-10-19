@@ -10,9 +10,9 @@ RailOps라는 이름은 `Rail`과 `Operations`를 합친 말입니다. 단순 �
 
 ## 현재 작업 단계
 
-현재 단계는 핵심 예매/결제/취소와 사용자·관리자 예매 관리 기능을 구현하고 PostgreSQL 통합 검증을 마친 단계입니다.
+현재 단계는 핵심 예매, 회원 관리, 운행 취소/환불, 운영 로그, Flyway를 구현하고 PostgreSQL/브라우저 검증을 마친 단계입니다. Docker 실구동과 실제 서버 배포는 사용자 환경 준비가 필요합니다.
 
-회원가입/로그인, 관리자 기준 데이터 CRUD, 운행편 검색/좌석 조회, HOLD/만료 처리, 단일 기본요금, 가상 결제/전액 환불, 본인·관리자 예매 조회가 구현되어 있습니다. 로컬 PostgreSQL 연결과 브라우저 전체 흐름도 확인했습니다.
+이름/비밀번호 변경, 탈퇴, tokenVersion 기반 JWT 폐기, 관리자 bootstrap, 기준 데이터 참조 보호, 운행 취소 전액 가상 환불, 운영 로그도 구현되어 있습니다. 기존 DB는 Flyway baseline 1 이후 V2를 적용했으며 Hibernate는 validate만 수행합니다. 최신 정책/검증은 `docs/39-work-report-20261019.md`, 실행법은 `docs/38-local-and-container-runbook.md`를 먼저 확인합니다.
 
 역, 노선, 열차, 객차, 좌석, 운행편은 관리자 CRUD로 직접 등록합니다. `backend/sql/demo-data.sql`은 명시적으로 실행하는 로컬 데모 데이터이며 계정을 만들거나 기존 데이터를 삭제하지 않습니다. 상세 상태는 `TODO.md`, `docs/34-current-progress-summary.md`, `docs/36-work-report-20261018.md`를 확인합니다. 기본요금 50,000원과 출발 전 전액 가상 환불은 개발 기본 정책입니다.
 
@@ -41,7 +41,7 @@ RailOps라는 이름은 `Rail`과 `Operations`를 합친 말입니다. 단순 �
 - Spring Scheduler는 만료된 HOLD를 주기적으로 정리하는 역할을 합니다.
 - 결제 성공 API에서도 `hold_expires_at` 만료 여부를 반드시 재검증합니다.
 - Redis TTL은 보조 수단으로 사용할 수 있지만, 예매 정합성을 Redis에만 의존하지 않습니다.
-- 동시성 제어는 1차 구현에서 ScheduleSeat 행에 대한 비관적 락을 우선 검토합니다.
+- HOLD는 User 공유 잠금 → TrainSchedule 공유 잠금 → ScheduleSeat 비관적 락 순서입니다. 결제/취소/만료는 TrainSchedule 공유 잠금 → Payment → ScheduleSeat 순서입니다. 관리자 운행 취소는 TrainSchedule 배타 잠금을 먼저 획득합니다.
 - 여러 좌석을 동시에 점유할 때는 좌석 ID 오름차순으로 잠가 데드락 가능성을 줄입니다.
 
 ## 프론트엔드 범위

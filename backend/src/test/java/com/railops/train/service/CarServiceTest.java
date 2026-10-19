@@ -33,11 +33,13 @@ class CarServiceTest {
     @Mock
     private TrainRepository trainRepository;
 
+    @Mock private com.railops.config.CatalogGuard guard;
+
     private CarService carService;
 
     @BeforeEach
     void setUp() {
-        carService = new CarService(carRepository, trainRepository);
+        carService = new CarService(carRepository, trainRepository, guard);
     }
 
     @Test

@@ -1,0 +1,40 @@
+name: RailOps CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: railops
+          POSTGRES_USER: railops
+          POSTGRES_PASSWORD: railops
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U railops" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Backend unit and PostgreSQL integration tests
+        working-directory: backend
+        env:
+          RAILOPS_TEST_DB_URL: jdbc:postgresql://localhost:5432/railops
+        run: bash gradlew test bootJar
+      - name: Frontend build
+        working-directory: frontend
+        run: npm ci && npm run build
+      - name: Compose validation and image build
+        env:
+          RAILOPS_DB_PASSWORD: ci-only-password
+          RAILOPS_JWT_SECRET: ci-only-jwt-secret-at-least-thirty-two-characters
+        run: docker compose --profile monitoring config --quiet && docker compose build

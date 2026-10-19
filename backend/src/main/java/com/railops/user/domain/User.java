@@ -34,6 +34,8 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status;
+    @Column(nullable = false)
+    private long tokenVersion;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -93,5 +95,14 @@ public class User {
 
     public boolean isActive() {
         return status == UserStatus.ACTIVE;
+    }
+
+    public long getTokenVersion() { return tokenVersion; }
+    public void rename(String name) { this.name = name.trim(); this.updatedAt = LocalDateTime.now(); }
+    public void changePassword(String encodedPassword) { this.password = encodedPassword; revokeTokens(); }
+    public void revokeTokens() { this.tokenVersion++; this.updatedAt = LocalDateTime.now(); }
+    public void withdraw() { this.status = UserStatus.DELETED; revokeTokens(); }
+    public static User createAdmin(String email, String password, String name) {
+        return new User(email, password, name, UserRole.ADMIN, UserStatus.ACTIVE);
     }
 }

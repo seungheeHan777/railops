@@ -8,6 +8,10 @@
 }
 
 .reservation-view { display: grid; gap: 16px; margin-top: 24px; min-width: 0; }
+.account-settings { margin-top: 24px; padding-top: 16px; border-top: 1px solid #d7e0e8; }
+.account-settings summary { cursor: pointer; font-weight: 600; }
+.account-settings-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 24px; margin-top: 18px; }
+.account-settings-forms h3 { font-size: 16px; margin: 0; }
 .reservation-toolbar, .reservation-pagination, .reservation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .reservation-toolbar h3 { margin: 0 auto 0 0; font-size: 18px; }
 .reservation-toolbar .field { min-width: 150px; }

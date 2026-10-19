@@ -57,7 +57,11 @@ class ReservationPostgresIntegrationTest {
         props.add("spring.datasource.username", ReservationPostgresIntegrationTest::user);
         props.add("spring.datasource.password", ReservationPostgresIntegrationTest::password);
         props.add("spring.datasource.hikari.connection-init-sql", () -> "SET lock_timeout = '5s'");
-        props.add("spring.jpa.hibernate.ddl-auto", () -> "create");
+        props.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+        props.add("spring.flyway.enabled", () -> "true");
+        props.add("spring.flyway.default-schema", () -> SCHEMA);
+        props.add("spring.flyway.schemas", () -> SCHEMA);
+        props.add("management.server.port", () -> "0");
         props.add("spring.jpa.properties.hibernate.default_schema", () -> SCHEMA);
         props.add("spring.jpa.open-in-view", () -> "false");
         props.add("railops.hold.scheduler-enabled", () -> "false");
@@ -73,6 +77,12 @@ class ReservationPostgresIntegrationTest {
     @Autowired ReservationService reservations;
     @Autowired ReservationQueryService queries;
     @Autowired PaymentService payments;
+    @Autowired com.railops.schedule.service.TrainScheduleService scheduleService;
+    @Autowired com.railops.station.service.StationService stationService;
+    @Autowired com.railops.route.service.RouteService routeService;
+    @Autowired com.railops.train.service.TrainService trainService;
+    @Autowired com.railops.train.service.CarService carService;
+    @Autowired com.railops.train.service.SeatService physicalSeatService;
     @Autowired com.railops.seat.service.ScheduleSeatService seatService;
     @Autowired EntityManager em;
     @Autowired PlatformTransactionManager transactions;
@@ -108,6 +118,105 @@ class ReservationPostgresIntegrationTest {
         var outcomes = race(() -> hold(fixture.first, fixture.a), () -> hold(fixture.second, fixture.a));
         assertThat(outcomes.stream().filter(ReservationHoldResponse.class::isInstance).count()).isEqualTo(1);
         assertThat(outcomes).contains(ErrorCode.SEAT_ALREADY_HELD);
+    }
+
+    @Test void scheduleCancellationRefundsPaidAndCancelsPendingBookings() {
+        var paid = hold(fixture.first, fixture.a);
+        var pending = hold(fixture.second, fixture.b);
+        payments.simulateSuccess(fixture.first, paid.paymentId());
+        scheduleService.updateStatus(fixture.schedule, new com.railops.schedule.dto.TrainScheduleStatusUpdateRequest(com.railops.schedule.domain.TrainScheduleStatus.CANCELED));
+        assertThat(queries.getMine(fixture.first, paid.reservationId()).payment().status()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(queries.getMine(fixture.second, pending.reservationId()).payment().status()).isEqualTo(PaymentStatus.CANCELED);
+        assertThat(seatState(fixture.a)).isEqualTo(ScheduleSeatStatus.AVAILABLE);
+        assertThat(seatState(fixture.b)).isEqualTo(ScheduleSeatStatus.AVAILABLE);
+        assertThatThrownBy(() -> hold(fixture.first, fixture.a)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> scheduleService.updateStatus(fixture.schedule,
+            new com.railops.schedule.dto.TrainScheduleStatusUpdateRequest(com.railops.schedule.domain.TrainScheduleStatus.SCHEDULED)))
+            .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_SCHEDULE_STATUS);
+    }
+
+    @Test void cancellationRacingNewHoldLeavesNoActiveReservation() throws Exception {
+        race(() -> hold(fixture.first, fixture.a), () -> scheduleService.updateStatus(fixture.schedule,
+            new com.railops.schedule.dto.TrainScheduleStatusUpdateRequest(com.railops.schedule.domain.TrainScheduleStatus.CANCELED)));
+        assertThat(seatState(fixture.a)).isEqualTo(ScheduleSeatStatus.AVAILABLE);
+        assertThat(queries.list(fixture.first.getId(), ReservationStatus.PENDING_PAYMENT, 0, 10).content()).isEmpty();
+    }
+
+    @Test void cancellationRacingPaymentLeavesCanceledOrRefundedPayment() throws Exception {
+        var h = hold(fixture.first, fixture.a);
+        race(() -> payments.simulateSuccess(fixture.first, h.paymentId()), () -> scheduleService.updateStatus(fixture.schedule,
+            new com.railops.schedule.dto.TrainScheduleStatusUpdateRequest(com.railops.schedule.domain.TrainScheduleStatus.CANCELED)));
+        assertThat(queries.getMine(fixture.first, h.reservationId()).payment().status()).isIn(PaymentStatus.CANCELED, PaymentStatus.REFUNDED);
+        assertThat(seatState(fixture.a)).isEqualTo(ScheduleSeatStatus.AVAILABLE);
+    }
+
+    @Test void referencedCatalogAndBookedScheduleCannotBeChangedOrDeleted() {
+        long[] ids = new TransactionTemplate(transactions).execute(s -> {
+            var schedule = em.find(TrainSchedule.class, fixture.schedule);
+            var seat = em.find(ScheduleSeat.class, fixture.a).getSeat();
+            return new long[] {schedule.getRoute().getOriginStation().getId(), schedule.getRoute().getId(),
+                schedule.getTrain().getId(), seat.getCar().getId(), seat.getId()};
+        });
+        for (Runnable operation : List.<Runnable>of(() -> stationService.delete(ids[0]), () -> routeService.delete(ids[1]),
+            () -> trainService.delete(ids[2]), () -> carService.delete(ids[3]), () -> physicalSeatService.delete(ids[4]))) {
+            assertThatThrownBy(operation::run).isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.RESOURCE_IN_USE);
+        }
+        hold(fixture.first, fixture.a);
+        assertThatThrownBy(() -> scheduleService.delete(fixture.schedule)).isInstanceOf(BusinessException.class);
+        var detail = scheduleService.get(fixture.schedule);
+        assertThatThrownBy(() -> scheduleService.update(fixture.schedule, new com.railops.schedule.dto.TrainScheduleUpdateRequest(
+            ids[1], detail.operationDate(), detail.departureTime(), detail.arrivalTime())))
+            .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.RESOURCE_IN_USE);
+    }
+
+    @Test void unbookedScheduleDeletesItsGeneratedSeats() {
+        scheduleService.delete(fixture.schedule);
+        ScheduleSeat deleted = new TransactionTemplate(transactions).execute(s -> em.find(ScheduleSeat.class, fixture.a));
+        assertThat(deleted).isNull();
+    }
+
+    @Test void simultaneousScheduleCreationCannotOverlapSameTrain() throws Exception {
+        var original = scheduleService.get(fixture.schedule);
+        var departure = LocalDateTime.now(clock).plusDays(3).withHour(12);
+        var request = new com.railops.schedule.dto.TrainScheduleCreateRequest(original.trainId(), original.routeId(),
+            departure.toLocalDate(), departure, departure.plusHours(2));
+        var results = race(() -> scheduleService.create(request), () -> scheduleService.create(request));
+        assertThat(results.stream().filter(com.railops.schedule.dto.TrainScheduleResponse.class::isInstance).count()).isEqualTo(1);
+        assertThat(results).contains(ErrorCode.TRAIN_SCHEDULE_CONFLICT);
+    }
+
+    @Test void canceledScheduleDoesNotPreventCreatingReplacement() {
+        var original = scheduleService.get(fixture.schedule);
+        scheduleService.updateStatus(fixture.schedule, new com.railops.schedule.dto.TrainScheduleStatusUpdateRequest(com.railops.schedule.domain.TrainScheduleStatus.CANCELED));
+        var replacement = scheduleService.create(new com.railops.schedule.dto.TrainScheduleCreateRequest(original.trainId(), original.routeId(),
+            original.operationDate(), original.departureTime(), original.arrivalTime()));
+        assertThat(replacement.id()).isNotEqualTo(fixture.schedule);
+    }
+
+    @Test void httpAccountChangesRevokeTokensAndWithdrawalPreservesHistory() throws Exception {
+        var mapper = JsonMapper.builder().build();
+        String email = UUID.randomUUID() + "@account.test";
+        String oldLogin = "{\"email\":\"" + email + "\",\"password\":\"OldPassword123!\",\"name\":\"Account Test\"}";
+        request("POST", "/api/auth/signup", oldLogin, null);
+        String token = mapper.readTree(request("POST", "/api/auth/login", oldLogin, null).body()).path("data").path("accessToken").asText();
+        assertThat(request("PATCH", "/api/users/me", "{\"name\":\"Changed Name\"}", token).statusCode()).isEqualTo(200);
+        var h = request("POST", "/api/reservations/hold", "{\"scheduleId\":" + fixture.schedule + ",\"scheduleSeatIds\":[" + fixture.a + "]}", token);
+        long rid = mapper.readTree(h.body()).path("data").path("reservationId").asLong();
+        assertThat(request("POST", "/api/users/me/withdraw", "{\"currentPassword\":\"OldPassword123!\"}", token).statusCode()).isEqualTo(409);
+        request("POST", "/api/reservations/" + rid + "/cancel", "{}", token);
+        assertThat(request("POST", "/api/users/me/password", "{\"currentPassword\":\"OldPassword123!\",\"newPassword\":\"NewPassword123!\"}", token).statusCode()).isEqualTo(200);
+        assertThat(request("GET", "/api/auth/me", null, token).statusCode()).isEqualTo(401);
+        String newLogin = oldLogin.replace("OldPassword123!", "NewPassword123!");
+        token = mapper.readTree(request("POST", "/api/auth/login", newLogin, null).body()).path("data").path("accessToken").asText();
+        assertThat(request("POST", "/api/auth/logout", "{}", token).statusCode()).isEqualTo(200);
+        assertThat(request("GET", "/api/auth/me", null, token).statusCode()).isEqualTo(401);
+        token = mapper.readTree(request("POST", "/api/auth/login", newLogin, null).body()).path("data").path("accessToken").asText();
+        assertThat(request("POST", "/api/users/me/withdraw", "{\"currentPassword\":\"NewPassword123!\"}", token).statusCode()).isEqualTo(200);
+        assertThat(request("GET", "/api/auth/me", null, token).statusCode()).isEqualTo(401);
+        assertThat(request("POST", "/api/auth/login", newLogin, null).statusCode()).isEqualTo(401);
+        assertThat(request("GET", "/api/admin/operation-logs", null, token).statusCode()).isEqualTo(401);
+        var auth = mapper.readTree(request("GET", "/api/reservations", null, null).body());
+        assertThat(auth.path("code").asText()).isEqualTo("AUTH_REQUIRED");
     }
 
     @Test void reverseSeatOrderDoesNotDeadlockAndAmountsAreSnapshots() throws Exception {
@@ -209,6 +318,7 @@ class ReservationPostgresIntegrationTest {
         long rid = data.path("reservationId").asLong(), pid = data.path("paymentId").asLong();
         assertThat(request("GET", "/api/reservations", null, token).statusCode()).isEqualTo(200);
         assertThat(request("GET", "/api/admin/reservations", null, token).statusCode()).isEqualTo(403);
+        assertThat(request("GET", "/api/admin/operation-logs", null, token).statusCode()).isEqualTo(403);
         assertThat(request("GET", "/api/reservations?size=0", null, token).statusCode()).isEqualTo(400);
         assertThat(request("GET", "/api/reservations?status=UNKNOWN", null, token).statusCode()).isEqualTo(400);
         assertThat(request("POST", "/api/payments/" + pid + "/simulate-success", "{}", token).statusCode()).isEqualTo(200);
@@ -218,6 +328,10 @@ class ReservationPostgresIntegrationTest {
         new TransactionTemplate(transactions).executeWithoutResult(status -> em.createNativeQuery("update users set role = 'ADMIN' where email = :email").setParameter("email", email).executeUpdate());
         assertThat(request("GET", "/api/admin/reservations", null, token).statusCode()).isEqualTo(200);
         assertThat(request("GET", "/api/admin/reservations/" + rid, null, token).statusCode()).isEqualTo(200);
+        var audit = request("GET", "/api/admin/operation-logs?action=PAYMENT_REFUNDED", null, token);
+        assertThat(audit.statusCode()).isEqualTo(200);
+        assertThat(mapper.readTree(audit.body()).path("data").path("totalElements").asLong()).isGreaterThan(0);
+        assertThat(audit.body()).doesNotContain("TestPass123!", "accessToken");
     }
 
     private HttpResponse<String> request(String method, String path, String body, String token) throws Exception {

@@ -266,6 +266,18 @@ Response DTO: `ScheduleSeatMapResponse`
 }
 ```
 
+## 회원 관리 API (2026-10-19 구현)
+
+| 메서드 | 주소 | 요청/설명 |
+| --- | --- | --- |
+| GET | `/api/auth/me` | 현재 회원 정보 |
+| PATCH | `/api/users/me` | `{ "name": "변경할 이름" }` |
+| POST | `/api/users/me/password` | `{ "currentPassword": "현재 비밀번호", "newPassword": "새 비밀번호" }` |
+| POST | `/api/users/me/withdraw` | `{ "currentPassword": "현재 비밀번호" }` |
+| POST | `/api/auth/logout` | 모든 기존 JWT 무효화 |
+
+이름 변경은 UserSummaryResponse, 나머지 변경 API는 빈 성공 응답이다. 비밀번호 변경/탈퇴/로그아웃 후 재로그인이 필요하다. 활성 HOLD/미래 확정 예매가 있으면 탈퇴는 409, 관리자 일반 탈퇴는 403이다. 인증 실패/토큰 만료·폐기는 401 AUTH_REQUIRED, 권한 부족은 403 ACCESS_DENIED다.
+
 ## Reservation API
 
 ### 좌석 임시 점유와 예매 생성
@@ -648,6 +660,10 @@ GET /api/admin/reservations/{reservationId}
 ```http
 GET /api/admin/operation-logs?action=PAYMENT_SUCCESS&from=2026-08-01&to=2026-08-31
 ```
+
+구현 완료. ADMIN 전용이며 page=0, size=20 기본값, 최대 size=100이다. from/to 생략 시 최근 30일을 조회하고 날짜 양끝을 포함한다. PageResponse의 content에는 id/actorId/action/targetType/targetId/createdAt을 담는다. 비밀번호/토큰/입력 이메일은 저장하지 않는다.
+
+관리자 운행 상태를 CANCELED로 변경하면 해당 운행편의 결제 대기 예매를 취소하고 확정 예매를 전액 가상 환불한다. CANCELED/COMPLETED 운행편은 다시 열지 않는다. 예매가 있는 운행편의 시각/노선 변경 및 삭제는 409 RESOURCE_IN_USE다. 다른 데이터가 참조하는 Station/Route/Train/Car/Seat의 수정·삭제도 같은 오류다.
 
 ## Monitoring API
 

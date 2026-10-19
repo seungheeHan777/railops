@@ -9,6 +9,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ScheduleSeatRepository extends JpaRepository<ScheduleSeat, Long> {
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("delete from ScheduleSeat ss where ss.trainSchedule.id = :id")
+    int deleteByScheduleId(@Param("id") Long id);
 
     boolean existsByTrainSchedule_Id(Long scheduleId);
 

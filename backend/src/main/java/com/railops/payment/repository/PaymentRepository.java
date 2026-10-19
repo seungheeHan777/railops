@@ -13,6 +13,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
+    @Query("select p.reservation.trainSchedule.id from Payment p where p.id = :id")
+    Optional<Long> findScheduleId(@Param("id") Long id);
+
+    @Query("select p.id from Payment p where p.reservation.trainSchedule.id = :id order by p.id")
+    List<Long> findIdsBySchedule(@Param("id") Long id);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.id = :paymentId")
     Optional<Payment> findByIdForUpdate(@Param("paymentId") Long paymentId);

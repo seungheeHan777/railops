@@ -58,11 +58,17 @@ class PaymentServiceTest {
     @Mock
     private ScheduleSeatRepository scheduleSeatRepository;
 
+    @Mock private com.railops.operation.OperationLogService logs;
+    @Mock private com.railops.schedule.repository.TrainScheduleRepository schedules;
     private PaymentService paymentService;
 
     @BeforeEach
     void setUp() {
-        paymentService = new PaymentService(paymentRepository, reservationSeatRepository, scheduleSeatRepository, FIXED_CLOCK);
+        org.mockito.Mockito.lenient().when(paymentRepository.findScheduleId(org.mockito.ArgumentMatchers.anyLong()))
+            .thenAnswer(inv -> paymentRepository.findByIdForUpdate(inv.getArgument(0)).map(p -> p.getReservation().getTrainSchedule().getId()));
+        org.mockito.Mockito.lenient().when(schedules.findByIdForShare(org.mockito.ArgumentMatchers.anyLong()))
+            .thenAnswer(inv -> paymentRepository.findByIdForUpdate(600L).map(p -> p.getReservation().getTrainSchedule()));
+        paymentService = new PaymentService(paymentRepository, reservationSeatRepository, scheduleSeatRepository, FIXED_CLOCK, schedules, logs);
     }
 
     @Test

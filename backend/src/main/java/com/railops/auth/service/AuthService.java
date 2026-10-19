@@ -1,6 +1,7 @@
 package com.railops.auth.service;
 
 import com.railops.auth.dto.LoginRequest;
+import com.railops.operation.OperationLogService;
 import com.railops.auth.dto.LoginResponse;
 import com.railops.auth.dto.SignupRequest;
 import com.railops.auth.dto.UserSummaryResponse;
@@ -19,10 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final OperationLogService logs;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, OperationLogService logs) {
+        this.logs = logs;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -30,6 +33,7 @@ public class AuthService {
 
     @Transactional
     public UserSummaryResponse signup(SignupRequest request) {
+        if (request.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) throw new BusinessException(ErrorCode.INVALID_REQUEST);
         if (userRepository.existsByEmail(request.email())) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
@@ -45,9 +49,10 @@ public class AuthService {
 
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
-            .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
+            .orElseThrow(() -> { logs.loginFailed(); return new BusinessException(ErrorCode.INVALID_CREDENTIALS); });
 
         if (!user.isActive() || !passwordEncoder.matches(request.password(), user.getPassword())) {
+            logs.loginFailed();
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 

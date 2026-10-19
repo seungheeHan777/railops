@@ -1,20 +1,77 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: railops-postgres
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: railops
       POSTGRES_USER: railops
-      POSTGRES_PASSWORD: railops
-    volumes:
-      - railops-postgres-data:/var/lib/postgresql/data
+      POSTGRES_PASSWORD: ${RAILOPS_DB_PASSWORD:?Set RAILOPS_DB_PASSWORD in .env}
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: [railops-postgres-data:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U railops -d railops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  backend:
+    build: ./backend
+    environment:
+      RAILOPS_DB_PASSWORD: ${RAILOPS_DB_PASSWORD:?Set RAILOPS_DB_PASSWORD in .env}
+      RAILOPS_JWT_SECRET: ${RAILOPS_JWT_SECRET:?Set RAILOPS_JWT_SECRET in .env}
+      RAILOPS_DEFAULT_SEAT_PRICE: ${RAILOPS_DEFAULT_SEAT_PRICE:-50000}
+      RAILOPS_BOOTSTRAP_ADMIN: ${RAILOPS_BOOTSTRAP_ADMIN:-false}
+      RAILOPS_FLYWAY_BASELINE: ${RAILOPS_FLYWAY_BASELINE:-false}
+      RAILOPS_ADMIN_EMAIL: ${RAILOPS_ADMIN_EMAIL:-}
+      RAILOPS_ADMIN_PASSWORD: ${RAILOPS_ADMIN_PASSWORD:-}
+      TZ: Asia/Seoul
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8081/actuator/health | grep -q UP"]
       interval: 10s
       timeout: 5s
-      retries: 5
-
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports: ["${RAILOPS_WEB_BIND_IP:-127.0.0.1}:${RAILOPS_WEB_PORT:-8090}:80"]
+    depends_on:
+      backend: {condition: service_healthy}
+    restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - railops-prometheus-data:/prometheus
+    ports: ["127.0.0.1:9090:9090"]
+    depends_on: [backend]
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: [monitoring]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-local-grafana-change-me}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - railops-grafana-data:/var/lib/grafana
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [prometheus]
+  k6:
+    image: grafana/k6:1.0.0
+    profiles: [loadtest]
+    volumes: [./infra/k6:/scripts:ro]
+    entrypoint: ["k6", "run", "/scripts/search.js"]
+    environment:
+      DATE: ${DATE:-}
+      VUS: ${VUS:-10}
+      DURATION: ${DURATION:-30s}
+    depends_on:
+      frontend: {condition: service_started}
 volumes:
   railops-postgres-data:
+  railops-prometheus-data:
+  railops-grafana-data:
+

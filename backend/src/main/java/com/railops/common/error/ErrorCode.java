@@ -4,6 +4,9 @@ import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "잘못된 요청입니다."),
+    RESOURCE_IN_USE(HttpStatus.CONFLICT, "RESOURCE_IN_USE", "참조 중인 데이터는 수정하거나 삭제할 수 없습니다."),
+    ACTIVE_RESERVATIONS_EXIST(HttpStatus.CONFLICT, "ACTIVE_RESERVATIONS_EXIST", "이용 예정 예매를 먼저 취소해야 합니다."),
+    INVALID_SCHEDULE_STATUS(HttpStatus.CONFLICT, "INVALID_SCHEDULE_STATUS", "변경할 수 없는 운행 상태입니다."),
     AUTH_REQUIRED(HttpStatus.UNAUTHORIZED, "AUTH_REQUIRED", "로그인이 필요합니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "접근 권한이 없습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),

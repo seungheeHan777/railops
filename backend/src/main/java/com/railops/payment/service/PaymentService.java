@@ -1,6 +1,8 @@
 package com.railops.payment.service;
 
 import com.railops.auth.security.UserPrincipal;
+import com.railops.operation.*;
+import com.railops.schedule.repository.TrainScheduleRepository;
 import com.railops.common.error.BusinessException;
 import com.railops.common.error.ErrorCode;
 import com.railops.common.error.HoldExpiredException;
@@ -28,9 +30,12 @@ public class PaymentService {
     private final ReservationSeatRepository reservationSeats;
     private final ScheduleSeatRepository seats;
     private final Clock clock;
+    private final TrainScheduleRepository schedules;
+    private final OperationLogService logs;
 
     public PaymentService(PaymentRepository payments, ReservationSeatRepository reservationSeats,
-        ScheduleSeatRepository seats, Clock clock) {
+        ScheduleSeatRepository seats, Clock clock, TrainScheduleRepository schedules, OperationLogService logs) {
+        this.schedules = schedules; this.logs = logs;
         this.payments = payments;
         this.reservationSeats = reservationSeats;
         this.seats = seats;
@@ -55,6 +60,7 @@ public class PaymentService {
             if (!belongsToHold(seat, r)) throw new BusinessException(ErrorCode.SEAT_NOT_AVAILABLE);
         }
         p.succeed(now);
+        logs.record(OperationAction.PAYMENT_SUCCESS, "PAYMENT", p.getId());
         r.confirm(now);
         lockedSeats.forEach(ScheduleSeat::reserve);
         return PaymentResultResponse.from(p, now);
@@ -69,6 +75,7 @@ public class PaymentService {
         LocalDateTime now = LocalDateTime.now(clock);
         requireLiveHold(p, lockedSeats, now);
         p.fail(now);
+        logs.record(OperationAction.PAYMENT_FAILED, "PAYMENT", p.getId());
         p.getReservation().failPayment(now);
         releaseOwnedHolds(p.getReservation(), lockedSeats);
         return PaymentResultResponse.from(p, now);
@@ -83,6 +90,7 @@ public class PaymentService {
         LocalDateTime now = LocalDateTime.now(clock);
         requireLiveHold(p, lockedSeats, now);
         p.cancel(now);
+        logs.record(OperationAction.PAYMENT_CANCELED, "PAYMENT", p.getId());
         p.getReservation().cancel(now);
         releaseOwnedHolds(p.getReservation(), lockedSeats);
         return PaymentResultResponse.from(p, now);
@@ -108,6 +116,7 @@ public class PaymentService {
                 expire(p, lockedSeats, now);
             } else {
                 p.cancel(now);
+        logs.record(OperationAction.PAYMENT_CANCELED, "PAYMENT", p.getId());
                 r.cancel(now);
                 releaseOwnedHolds(r, lockedSeats);
             }
@@ -117,6 +126,7 @@ public class PaymentService {
                 throw new BusinessException(ErrorCode.SEAT_NOT_AVAILABLE);
             }
             p.refund(now);
+            logs.record(OperationAction.PAYMENT_REFUNDED, "PAYMENT", p.getId());
             r.cancel(now);
             lockedSeats.forEach(ScheduleSeat::releaseHold);
         } else {
@@ -127,6 +137,7 @@ public class PaymentService {
 
     @Transactional
     public boolean expireIfDue(Long paymentId) {
+        lockSchedule(paymentId);
         Payment p = payments.findByIdForUpdate(paymentId).orElse(null);
         if (p == null || p.getStatus() != PaymentStatus.READY ||
             p.getReservation().getStatus() != ReservationStatus.PENDING_PAYMENT) return false;
@@ -137,7 +148,31 @@ public class PaymentService {
         return true;
     }
 
+    private void lockSchedule(Long paymentId) {
+        Long scheduleId = payments.findScheduleId(paymentId).orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
+        schedules.findByIdForShare(scheduleId).orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_FOUND));
+    }
+
+    @Transactional
+    public void cancelForSchedule(Long paymentId) {
+        Payment p = payments.findByIdForUpdate(paymentId).orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
+        if (p.getStatus() != PaymentStatus.READY && p.getStatus() != PaymentStatus.SUCCESS) return;
+        List<ScheduleSeat> lockedSeats = lockSeats(p);
+        var now = LocalDateTime.now(clock);
+        var r = p.getReservation();
+        if (p.getStatus() == PaymentStatus.SUCCESS) {
+            if (lockedSeats.stream().anyMatch(s -> s.getStatus() != ScheduleSeatStatus.RESERVED)) throw new BusinessException(ErrorCode.SEAT_NOT_AVAILABLE);
+            p.refund(now); lockedSeats.forEach(ScheduleSeat::releaseHold);
+            logs.record(OperationAction.PAYMENT_REFUNDED, "PAYMENT", p.getId());
+        } else {
+            p.cancel(now); releaseOwnedHolds(r, lockedSeats);
+            logs.record(OperationAction.PAYMENT_CANCELED, "PAYMENT", p.getId());
+        }
+        r.cancel(now);
+    }
+
     private Payment ownedPayment(UserPrincipal principal, Long paymentId) {
+        lockSchedule(paymentId);
         Payment p = payments.findByIdForUpdate(paymentId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
         if (!p.getReservation().getUser().getId().equals(principal.getId())) {
@@ -181,6 +216,7 @@ public class PaymentService {
 
     private void expire(Payment p, List<ScheduleSeat> lockedSeats, LocalDateTime now) {
         p.expire(now);
+        logs.record(OperationAction.PAYMENT_EXPIRED, "PAYMENT", p.getId());
         p.getReservation().expire(now);
         releaseOwnedHolds(p.getReservation(), lockedSeats);
     }

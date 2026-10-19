@@ -48,15 +48,25 @@ class TrainScheduleServiceTest {
     @Mock
     private ScheduleSeatService scheduleSeatService;
 
+    @Mock private com.railops.config.CatalogGuard guard;
+    @Mock private com.railops.reservation.repository.ReservationRepository reservations;
+    @Mock private com.railops.payment.repository.PaymentRepository payments;
+    @Mock private com.railops.payment.service.PaymentService paymentService;
+    @Mock private com.railops.seat.repository.ScheduleSeatRepository seats;
+    @Mock private com.railops.operation.OperationLogService logs;
     private TrainScheduleService trainScheduleService;
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient().when(trainScheduleRepository.findByIdForUpdate(org.mockito.ArgumentMatchers.anyLong()))
+            .thenAnswer(inv -> trainScheduleRepository.findById(inv.getArgument(0)));
+        org.mockito.Mockito.lenient().when(trainScheduleRepository.findTrainId(org.mockito.ArgumentMatchers.anyLong()))
+            .thenAnswer(inv -> trainScheduleRepository.findById(inv.getArgument(0)).map(s -> s.getTrain().getId()));
         trainScheduleService = new TrainScheduleService(
             trainScheduleRepository,
             trainRepository,
             routeRepository,
-            scheduleSeatService
+            scheduleSeatService, guard, reservations, payments, paymentService, seats, logs, java.time.Clock.systemDefaultZone()
         );
     }
 

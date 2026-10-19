@@ -1,0 +1,9 @@
+.git
+.idea
+.env
+backups
+**/node_modules
+**/dist
+**/build
+**/.gradle
+**/*.log

@@ -2,6 +2,8 @@
 
 이 문서는 `docs/04-erd.md`를 바탕으로 작성한 PostgreSQL DDL 초안입니다. DDL은 Data Definition Language의 약자로, 실제 데이터베이스 테이블을 만드는 SQL입니다.
 
+2026-10-19부터 실제 스키마의 기준은 `backend/src/main/resources/db/migration/V1__initial_schema.sql` 및 V2입니다. 이 문서는 초기 설계 기록입니다. 최신 변경은 마이그레이션 파일과 `docs/39-work-report-20261019.md`를 확인합니다.
+
 ## ERD와 DDL의 차이
 
 ```text

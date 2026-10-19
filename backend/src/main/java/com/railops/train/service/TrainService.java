@@ -1,5 +1,7 @@
 package com.railops.train.service;
 
+import com.railops.config.CatalogGuard;
+
 import com.railops.common.error.BusinessException;
 import com.railops.common.error.ErrorCode;
 import com.railops.train.domain.Train;
@@ -14,10 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class TrainService {
+    private final CatalogGuard guard;
 
     private final TrainRepository trainRepository;
 
-    public TrainService(TrainRepository trainRepository) {
+    public TrainService(TrainRepository trainRepository, CatalogGuard guard) {
+        this.guard = guard;
         this.trainRepository = trainRepository;
     }
 
@@ -45,6 +49,7 @@ public class TrainService {
 
     @Transactional
     public TrainResponse update(Long trainId, TrainUpdateRequest request) {
+        guard.train(trainId);
         Train train = getTrain(trainId);
         String trainNo = normalizeTrainNo(request.trainNo());
 
@@ -58,6 +63,7 @@ public class TrainService {
 
     @Transactional
     public void delete(Long trainId) {
+        guard.train(trainId);
         Train train = getTrain(trainId);
         trainRepository.delete(train);
     }

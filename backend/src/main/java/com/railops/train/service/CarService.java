@@ -1,5 +1,7 @@
 package com.railops.train.service;
 
+import com.railops.config.CatalogGuard;
+
 import com.railops.common.error.BusinessException;
 import com.railops.common.error.ErrorCode;
 import com.railops.train.domain.Car;
@@ -16,11 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class CarService {
+    private final CatalogGuard guard;
 
     private final CarRepository carRepository;
     private final TrainRepository trainRepository;
 
-    public CarService(CarRepository carRepository, TrainRepository trainRepository) {
+    public CarService(CarRepository carRepository, TrainRepository trainRepository, CatalogGuard guard) {
+        this.guard = guard;
         this.carRepository = carRepository;
         this.trainRepository = trainRepository;
     }
@@ -50,6 +54,7 @@ public class CarService {
 
     @Transactional
     public CarResponse update(Long carId, CarUpdateRequest request) {
+        guard.car(carId);
         Car car = getCar(carId);
         Long trainId = car.getTrain().getId();
 
@@ -63,6 +68,7 @@ public class CarService {
 
     @Transactional
     public void delete(Long carId) {
+        guard.car(carId);
         Car car = getCar(carId);
         carRepository.delete(car);
     }
@@ -73,6 +79,7 @@ public class CarService {
     }
 
     private Train getTrain(Long trainId) {
+        guard.reference(Train.class, trainId);
         return trainRepository.findById(trainId)
             .orElseThrow(() -> new BusinessException(ErrorCode.TRAIN_NOT_FOUND));
     }

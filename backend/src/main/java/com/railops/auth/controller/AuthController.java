@@ -6,6 +6,7 @@ import com.railops.auth.dto.SignupRequest;
 import com.railops.auth.dto.UserSummaryResponse;
 import com.railops.auth.security.UserPrincipal;
 import com.railops.auth.service.AuthService;
+import com.railops.user.service.UserService;
 import com.railops.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,8 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserService users;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, UserService users) {
+        this.users = users;
         this.authService = authService;
     }
 
@@ -41,7 +44,8 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Void> logout() {
+    public ApiResponse<Void> logout(@AuthenticationPrincipal UserPrincipal principal) {
+        users.logout(principal);
         return ApiResponse.empty();
     }
 }

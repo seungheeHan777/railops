@@ -47,11 +47,12 @@ class ScheduleSeatServiceTest {
     @Mock
     private SeatRepository seatRepository;
 
+    @Mock private com.railops.operation.OperationLogService logs;
     private ScheduleSeatService scheduleSeatService;
 
     @BeforeEach
     void setUp() {
-        scheduleSeatService = new ScheduleSeatService(scheduleSeatRepository, trainScheduleRepository, seatRepository);
+        scheduleSeatService = new ScheduleSeatService(scheduleSeatRepository, trainScheduleRepository, seatRepository, logs);
     }
 
     @Test

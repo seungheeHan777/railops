@@ -27,9 +27,9 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - Spring Boot
 - Spring Security
 - Spring Data JPA
-- QueryDSL
+- JPA Repository 조회 (QueryDSL은 후순위)
 - PostgreSQL
-- Redis
+- Redis 연동 기반 의존성 (캐시/TTL 활용은 후순위)
 - JUnit5
 - Testcontainers
 - Gradle
@@ -39,8 +39,8 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - React
 - Vite
 - TypeScript
-- Tailwind CSS
-- Axios 또는 TanStack Query
+- CSS
+- fetch 기반 API client
 
 프론트엔드는 프로젝트의 핵심은 아니지만, 실제 흐름을 확인할 수 있도록 최소한의 사용자/관리자 UI를 구현합니다.
 
@@ -69,6 +69,7 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - 회원가입
 - 로그인/로그아웃
 - 내 정보 조회
+- 이름/비밀번호 변경, 회원 탈퇴, 기존 JWT 무효화
 - 열차 검색
 - 운행편 상세 조회
 - 운행편 좌석 맵 조회
@@ -89,6 +90,8 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - 좌석 BLOCK / UNBLOCK
 - 전체 예매 조회
 - 운영 로그 조회
+- 운행 취소에 따른 HOLD 취소/전액 가상 환불
+- 참조된 기준 데이터 수정·삭제 보호
 
 ## 운영 목표
 
@@ -122,3 +125,8 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - `docs/34-current-progress-summary.md`: 현재 구현/DB/프론트/다음 작업 진행상황 요약
 - `docs/35-reservation-management.md`: 기본요금, 예매 조회/취소/환불 API 및 정합성 기준
 - `docs/36-work-report-20261018.md`: 2026-10-18 작업 결과, 검증, 남은 문제와 주의사항
+- `docs/37-service-completion-plan.md`: 회원/운행/로그/마이그레이션 구현 정책
+- `docs/38-local-and-container-runbook.md`: 로컬/Docker 실행, 관리자 생성, DB 전환, 모니터링/부하 절차
+- `docs/39-work-report-20261019.md`: 최신 구현 결과와 검증·미검증 범위
+
+현재 DB는 Flyway로 변경 이력을 관리하고 Hibernate는 validate만 수행합니다. Docker 구성은 작성했으며 Docker 미설치 환경의 컨테이너 실구동과 실제 서버 배포는 별도 검증이 필요합니다.

@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CircleUserRound,
   ClipboardList,
+  ScrollText,
   Home,
   Layers3,
   LogIn,
@@ -20,6 +21,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import ReservationsView from './ReservationsView';
+import AccountSettings from './AccountSettings';
+import OperationLogsView from './OperationLogsView';
 import { fetchMe, login, logout, signup } from './api/auth';
 import { createStation, deleteStation, fetchAdminStations, fetchStations, searchStations, updateStation } from './api/stations';
 import {
@@ -78,7 +81,7 @@ import type {
 } from './types/api';
 
 type View = 'home' | 'login' | 'signup' | 'profile' | 'stations' | 'schedules' | 'admin';
-type AdminTab = 'stations' | 'routes' | 'trains' | 'cars' | 'seats' | 'schedules' | 'reservations';
+type AdminTab = 'stations' | 'routes' | 'trains' | 'cars' | 'seats' | 'schedules' | 'reservations' | 'logs';
 type Notice = { type: 'success' | 'error' | 'info'; text: string };
 
 const emptyStationForm: StationPayload = { name: '', code: '', city: '' };
@@ -99,6 +102,15 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    function expired() {
+      localStorage.removeItem(tokenStorageKey); setToken(null); setUser(null); setView('login');
+      setNotice({ type: 'info', text: '로그인이 만료되었습니다. 다시 로그인해 주세요.' });
+    }
+    window.addEventListener('railops:session-expired', expired);
+    return () => window.removeEventListener('railops:session-expired', expired);
+  }, []);
+
+  useEffect(() => {
     if (!token) {
       setUser(null);
       return;
@@ -116,6 +128,10 @@ export default function App() {
     setUser(response.user);
     setView('profile');
     setNotice({ type: 'success', text: `${response.user.name}님 로그인됨` });
+  }
+
+  function endSession() {
+    localStorage.removeItem(tokenStorageKey); setToken(null); setUser(null); setView('login');
   }
 
   async function handleLogout() {
@@ -173,7 +189,7 @@ export default function App() {
         {view === 'home' && <HomeView onNavigate={setView} user={user} />}
         {view === 'login' && <LoginView onLoggedIn={saveLogin} setNotice={setNotice} />}
         {view === 'signup' && <SignupView onSignedUp={() => setView('login')} setNotice={setNotice} />}
-        {view === 'profile' && <ProfileView token={token} user={user} onNavigate={setView} setNotice={setNotice} />}
+        {view === 'profile' && <ProfileView token={token} user={user} onNavigate={setView} setNotice={setNotice} onUpdated={setUser} onSessionEnded={endSession} />}
         {view === 'stations' && <StationsView setNotice={setNotice} />}
         {view === 'schedules' && <ScheduleSearchView token={token} setNotice={setNotice} />}
         {view === 'admin' && <AdminConsoleView token={token} user={user} setNotice={setNotice} />}
@@ -238,11 +254,11 @@ function SignupView({ onSignedUp, setNotice }: { onSignedUp: () => void; setNoti
   }
   return <section className="form-layout"><PanelTitle icon={UserPlus} title="회원가입" /><form className="form-stack" onSubmit={handleSubmit}><Field label="이름" value={name} onChange={setName} autoComplete="name" /><Field label="이메일" value={email} onChange={setEmail} type="email" autoComplete="email" /><Field label="비밀번호" value={password} onChange={setPassword} type="password" autoComplete="new-password" /><button className="primary-button" type="submit" disabled={submitting}><UserPlus size={18} /><span>{submitting ? '처리 중' : '가입'}</span></button></form></section>;
 }
-function ProfileView({ token, user, onNavigate, setNotice }: { token: string | null; user: UserSummary | null; onNavigate: (view: View) => void; setNotice: (notice: Notice) => void }) {
+function ProfileView({ token, user, onNavigate, setNotice, onUpdated, onSessionEnded }: { token: string | null; user: UserSummary | null; onNavigate: (view: View) => void; setNotice: (notice: Notice) => void; onUpdated: (user: UserSummary) => void; onSessionEnded: () => void }) {
   if (!user) {
     return <section className="empty-state"><CircleUserRound size={38} /><h2>로그인 필요</h2><button className="primary-button" type="button" onClick={() => onNavigate('login')}><LogIn size={18} /><span>로그인</span></button></section>;
   }
-  return <section className="profile-layout"><PanelTitle icon={CircleUserRound} title="마이페이지" /><dl className="definition-list"><div><dt>ID</dt><dd>{user.id ?? '-'}</dd></div><div><dt>이메일</dt><dd>{user.email}</dd></div><div><dt>이름</dt><dd>{user.name}</dd></div><div><dt>권한</dt><dd>{user.role}</dd></div></dl>{token && <ReservationsView token={token} setNotice={setNotice} />}</section>;
+  return <section className="profile-layout"><PanelTitle icon={CircleUserRound} title="마이페이지" /><dl className="definition-list"><div><dt>ID</dt><dd>{user.id ?? '-'}</dd></div><div><dt>이메일</dt><dd>{user.email}</dd></div><div><dt>이름</dt><dd>{user.name}</dd></div><div><dt>권한</dt><dd>{user.role}</dd></div></dl>{token && <><AccountSettings token={token} user={user} onUpdated={onUpdated} onSessionEnded={onSessionEnded} setNotice={setNotice} /><ReservationsView token={token} setNotice={setNotice} /></>}</section>;
 }
 
 function StationsView({ setNotice }: { setNotice: (notice: Notice) => void }) {
@@ -365,9 +381,10 @@ function AdminConsoleView({ token, user, setNotice }: { token: string | null; us
     { tab: 'seats' as const, label: '좌석', icon: Armchair },
     { tab: 'schedules' as const, label: '운행편', icon: CalendarClock },
     { tab: 'reservations' as const, label: '예매', icon: ClipboardList },
+    { tab: 'logs' as const, label: '운영 로그', icon: ScrollText },
   ];
   if (!token || user?.role !== 'ADMIN') return <section className="admin-layout"><PanelTitle icon={Shield} title="관리자 콘솔" /><div className="inline-alert">ADMIN 권한으로 로그인해야 관리자 기능을 사용할 수 있습니다.</div></section>;
-  return <section className="admin-layout"><PanelTitle icon={Shield} title="관리자 콘솔" /><nav className="admin-tabs" aria-label="관리자 기능">{tabs.map((item) => { const Icon = item.icon; return <button key={item.tab} type="button" className={tab === item.tab ? 'active' : ''} onClick={() => setTab(item.tab)}><Icon size={17} /><span>{item.label}</span></button>; })}</nav>{tab === 'stations' && <AdminStationsView token={token} setNotice={setNotice} />}{tab === 'routes' && <AdminRoutesView token={token} setNotice={setNotice} />}{tab === 'trains' && <AdminTrainsView token={token} setNotice={setNotice} />}{tab === 'cars' && <AdminCarsView token={token} setNotice={setNotice} />}{tab === 'seats' && <AdminSeatsView token={token} setNotice={setNotice} />}{tab === 'schedules' && <AdminSchedulesView token={token} setNotice={setNotice} />}{tab === 'reservations' && <ReservationsView token={token} admin setNotice={setNotice} />}</section>;
+  return <section className="admin-layout"><PanelTitle icon={Shield} title="관리자 콘솔" /><nav className="admin-tabs" aria-label="관리자 기능">{tabs.map((item) => { const Icon = item.icon; return <button key={item.tab} type="button" className={tab === item.tab ? 'active' : ''} onClick={() => setTab(item.tab)}><Icon size={17} /><span>{item.label}</span></button>; })}</nav>{tab === 'stations' && <AdminStationsView token={token} setNotice={setNotice} />}{tab === 'routes' && <AdminRoutesView token={token} setNotice={setNotice} />}{tab === 'trains' && <AdminTrainsView token={token} setNotice={setNotice} />}{tab === 'cars' && <AdminCarsView token={token} setNotice={setNotice} />}{tab === 'seats' && <AdminSeatsView token={token} setNotice={setNotice} />}{tab === 'schedules' && <AdminSchedulesView token={token} setNotice={setNotice} />}{tab === 'reservations' && <ReservationsView token={token} admin setNotice={setNotice} />}{tab === 'logs' && <OperationLogsView token={token} />}</section>;
 }
 
 function AdminStationsView({ token, setNotice }: { token: string; setNotice: (notice: Notice) => void }) {
@@ -480,7 +497,7 @@ function AdminSchedulesView({ token, setNotice }: { token: string; setNotice: (n
     } catch (error) { setNotice({ type: 'error', text: error instanceof Error ? error.message : '운행편 저장 실패' }); }
     finally { setLoading(false); }
   }
-  async function handleStatus(scheduleId: number, status: TrainScheduleStatus) { setLoading(true); try { await updateTrainScheduleStatus(token, scheduleId, status); setNotice({ type: 'success', text: '운행편 상태 변경 완료' }); await loadAll(); } catch (error) { setNotice({ type: 'error', text: error instanceof Error ? error.message : '상태 변경 실패' }); } finally { setLoading(false); } }
+  async function handleStatus(scheduleId: number, status: TrainScheduleStatus) { if (status === 'CANCELED' && !window.confirm('운행을 취소하고 이 운행편의 예매를 전액 가상 환불할까요?')) return; setLoading(true); try { await updateTrainScheduleStatus(token, scheduleId, status); setNotice({ type: 'success', text: '운행편 상태 변경 완료' }); await loadAll(); } catch (error) { setNotice({ type: 'error', text: error instanceof Error ? error.message : '상태 변경 실패' }); } finally { setLoading(false); } }
   async function handleDelete(scheduleId: number) { setLoading(true); try { await deleteTrainSchedule(token, scheduleId); setNotice({ type: 'success', text: '운행편 삭제 완료' }); setSeatMap(null); await loadAll(); } catch (error) { setNotice({ type: 'error', text: error instanceof Error ? error.message : '운행편 삭제 실패' }); } finally { setLoading(false); } }
   async function loadScheduleSeats(scheduleId = selectedScheduleId) {
     if (!scheduleId) return;
