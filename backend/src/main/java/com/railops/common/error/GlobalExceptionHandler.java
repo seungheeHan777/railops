@@ -11,6 +11,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler({org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+        org.springframework.web.bind.MissingServletRequestParameterException.class,
+        org.springframework.http.converter.HttpMessageNotReadableException.class})
+    public ResponseEntity<ApiResponse<Void>> handleInvalidInput(Exception exception) {
+        return ResponseEntity.badRequest().body(ApiResponse.error(ErrorCode.INVALID_REQUEST.message(), "INVALID_REQUEST"));
+    }
+
+    @ExceptionHandler(org.springframework.dao.ConcurrencyFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConcurrency(Exception exception) {
+        return ResponseEntity.status(409).body(ApiResponse.error(ErrorCode.CONCURRENCY_CONFLICT.message(), "CONCURRENCY_CONFLICT"));
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
         ErrorCode errorCode = exception.getErrorCode();

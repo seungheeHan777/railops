@@ -11,6 +11,10 @@ import type {
   ReservationHoldPayload,
   ReservationHoldResponse,
   PaymentResultResponse,
+  PageResult,
+  ReservationSummary,
+  ReservationDetail,
+  ReservationStatus,
   Train,
   TrainPayload,
   TrainSchedule,
@@ -158,4 +162,18 @@ export function simulatePaymentCancel(token: string, paymentId: number) {
     method: 'POST',
     token,
   });
+}
+
+export function fetchReservations(token: string, admin: boolean, page: number, status: ReservationStatus | '') {
+  const query = new URLSearchParams({ page: String(page), size: '10' });
+  if (status) query.set('status', status);
+  return apiRequest<PageResult<ReservationSummary>>(`${admin ? '/admin' : ''}/reservations?${query}`, { token });
+}
+
+export function fetchReservation(token: string, id: number, admin = false) {
+  return apiRequest<ReservationDetail>(`${admin ? '/admin' : ''}/reservations/${id}`, { token });
+}
+
+export function cancelReservation(token: string, id: number) {
+  return apiRequest<ReservationDetail>(`/reservations/${id}/cancel`, { token, method: 'POST' });
 }

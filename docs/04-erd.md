@@ -189,6 +189,8 @@ erDiagram
         timestamp confirmed_at
         timestamp canceled_at
         timestamp expired_at
+        timestamp refunded_at
+        decimal refunded_amount
         timestamp updated_at
     }
 

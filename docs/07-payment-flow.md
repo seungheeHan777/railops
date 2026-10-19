@@ -12,6 +12,7 @@ SUCCESS
 FAILED
 CANCELED
 EXPIRED
+REFUNDED
 ```
 
 Reservation 상태:
@@ -112,15 +113,16 @@ sequenceDiagram
 
 1차 구현에서는 결제 완료 후 환불 모델을 단순화합니다.
 
-정책 초안:
+2026-10-18 구현 정책: 출발 전 전액 가상 환불. 부분 취소는 지원하지 않습니다.
 
 ```text
 Reservation: CONFIRMED → CANCELED
 ScheduleSeat: RESERVED → AVAILABLE
-Payment: SUCCESS 유지
+Payment: SUCCESS → REFUNDED
+refundedAmount = 기존 결제 금액, refundedAt = 처리 시각
 ```
 
-실제 환불 상태가 필요해지면 Payment 상태에 `REFUNDED`를 추가하는 방안을 검토합니다.
+같은 취소 요청을 반복해도 기존 결과만 반환합니다. 실제 결제사 환불은 연동하지 않았습니다.
 
 ## 운영 로그
 

@@ -44,6 +44,9 @@ public class Payment {
     private LocalDateTime failedAt;
     private LocalDateTime canceledAt;
     private LocalDateTime expiredAt;
+    private LocalDateTime refundedAt;
+    @Column(precision = 12, scale = 2)
+    private BigDecimal refundedAmount;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -94,6 +97,19 @@ public class Payment {
 
     public Long getId() {
         return id;
+    }
+
+    public void refund(LocalDateTime now) {
+        this.status = PaymentStatus.REFUNDED;
+        this.refundedAt = now;
+        this.refundedAmount = amount;
+        this.updatedAt = now;
+    }
+
+    public LocalDateTime getRefundedAt() { return refundedAt; }
+
+    public BigDecimal getRefundedAmount() {
+        return refundedAmount == null ? BigDecimal.ZERO : refundedAmount;
     }
 
     public Reservation getReservation() {

@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarClock,
   CircleUserRound,
+  ClipboardList,
   Home,
   Layers3,
   LogIn,
@@ -18,6 +19,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import ReservationsView from './ReservationsView';
 import { fetchMe, login, logout, signup } from './api/auth';
 import { createStation, deleteStation, fetchAdminStations, fetchStations, searchStations, updateStation } from './api/stations';
 import {
@@ -76,7 +78,7 @@ import type {
 } from './types/api';
 
 type View = 'home' | 'login' | 'signup' | 'profile' | 'stations' | 'schedules' | 'admin';
-type AdminTab = 'stations' | 'routes' | 'trains' | 'cars' | 'seats' | 'schedules';
+type AdminTab = 'stations' | 'routes' | 'trains' | 'cars' | 'seats' | 'schedules' | 'reservations';
 type Notice = { type: 'success' | 'error' | 'info'; text: string };
 
 const emptyStationForm: StationPayload = { name: '', code: '', city: '' };
@@ -171,7 +173,7 @@ export default function App() {
         {view === 'home' && <HomeView onNavigate={setView} user={user} />}
         {view === 'login' && <LoginView onLoggedIn={saveLogin} setNotice={setNotice} />}
         {view === 'signup' && <SignupView onSignedUp={() => setView('login')} setNotice={setNotice} />}
-        {view === 'profile' && <ProfileView user={user} onNavigate={setView} />}
+        {view === 'profile' && <ProfileView token={token} user={user} onNavigate={setView} setNotice={setNotice} />}
         {view === 'stations' && <StationsView setNotice={setNotice} />}
         {view === 'schedules' && <ScheduleSearchView token={token} setNotice={setNotice} />}
         {view === 'admin' && <AdminConsoleView token={token} user={user} setNotice={setNotice} />}
@@ -236,11 +238,11 @@ function SignupView({ onSignedUp, setNotice }: { onSignedUp: () => void; setNoti
   }
   return <section className="form-layout"><PanelTitle icon={UserPlus} title="회원가입" /><form className="form-stack" onSubmit={handleSubmit}><Field label="이름" value={name} onChange={setName} autoComplete="name" /><Field label="이메일" value={email} onChange={setEmail} type="email" autoComplete="email" /><Field label="비밀번호" value={password} onChange={setPassword} type="password" autoComplete="new-password" /><button className="primary-button" type="submit" disabled={submitting}><UserPlus size={18} /><span>{submitting ? '처리 중' : '가입'}</span></button></form></section>;
 }
-function ProfileView({ user, onNavigate }: { user: UserSummary | null; onNavigate: (view: View) => void }) {
+function ProfileView({ token, user, onNavigate, setNotice }: { token: string | null; user: UserSummary | null; onNavigate: (view: View) => void; setNotice: (notice: Notice) => void }) {
   if (!user) {
     return <section className="empty-state"><CircleUserRound size={38} /><h2>로그인 필요</h2><button className="primary-button" type="button" onClick={() => onNavigate('login')}><LogIn size={18} /><span>로그인</span></button></section>;
   }
-  return <section className="profile-layout"><PanelTitle icon={CircleUserRound} title="마이페이지" /><dl className="definition-list"><div><dt>ID</dt><dd>{user.id ?? '-'}</dd></div><div><dt>이메일</dt><dd>{user.email}</dd></div><div><dt>이름</dt><dd>{user.name}</dd></div><div><dt>권한</dt><dd>{user.role}</dd></div></dl></section>;
+  return <section className="profile-layout"><PanelTitle icon={CircleUserRound} title="마이페이지" /><dl className="definition-list"><div><dt>ID</dt><dd>{user.id ?? '-'}</dd></div><div><dt>이메일</dt><dd>{user.email}</dd></div><div><dt>이름</dt><dd>{user.name}</dd></div><div><dt>권한</dt><dd>{user.role}</dd></div></dl>{token && <ReservationsView token={token} setNotice={setNotice} />}</section>;
 }
 
 function StationsView({ setNotice }: { setNotice: (notice: Notice) => void }) {
@@ -260,7 +262,10 @@ function StationsView({ setNotice }: { setNotice: (notice: Notice) => void }) {
 function ScheduleSearchView({ token, setNotice }: { token: string | null; setNotice: (notice: Notice) => void }) {
   const [from, setFrom] = useState('SEOUL');
   const [to, setTo] = useState('BUSAN');
-  const [date, setDate] = useState('2026-08-01');
+  const [date, setDate] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  });
   const [schedules, setSchedules] = useState<TrainScheduleSearchResult[]>([]);
   const [detail, setDetail] = useState<TrainSchedule | null>(null);
   const [seatMap, setSeatMap] = useState<ScheduleSeatMap | null>(null);
@@ -359,9 +364,10 @@ function AdminConsoleView({ token, user, setNotice }: { token: string | null; us
     { tab: 'cars' as const, label: '객차', icon: Layers3 },
     { tab: 'seats' as const, label: '좌석', icon: Armchair },
     { tab: 'schedules' as const, label: '운행편', icon: CalendarClock },
+    { tab: 'reservations' as const, label: '예매', icon: ClipboardList },
   ];
   if (!token || user?.role !== 'ADMIN') return <section className="admin-layout"><PanelTitle icon={Shield} title="관리자 콘솔" /><div className="inline-alert">ADMIN 권한으로 로그인해야 관리자 기능을 사용할 수 있습니다.</div></section>;
-  return <section className="admin-layout"><PanelTitle icon={Shield} title="관리자 콘솔" /><nav className="admin-tabs" aria-label="관리자 기능">{tabs.map((item) => { const Icon = item.icon; return <button key={item.tab} type="button" className={tab === item.tab ? 'active' : ''} onClick={() => setTab(item.tab)}><Icon size={17} /><span>{item.label}</span></button>; })}</nav>{tab === 'stations' && <AdminStationsView token={token} setNotice={setNotice} />}{tab === 'routes' && <AdminRoutesView token={token} setNotice={setNotice} />}{tab === 'trains' && <AdminTrainsView token={token} setNotice={setNotice} />}{tab === 'cars' && <AdminCarsView token={token} setNotice={setNotice} />}{tab === 'seats' && <AdminSeatsView token={token} setNotice={setNotice} />}{tab === 'schedules' && <AdminSchedulesView token={token} setNotice={setNotice} />}</section>;
+  return <section className="admin-layout"><PanelTitle icon={Shield} title="관리자 콘솔" /><nav className="admin-tabs" aria-label="관리자 기능">{tabs.map((item) => { const Icon = item.icon; return <button key={item.tab} type="button" className={tab === item.tab ? 'active' : ''} onClick={() => setTab(item.tab)}><Icon size={17} /><span>{item.label}</span></button>; })}</nav>{tab === 'stations' && <AdminStationsView token={token} setNotice={setNotice} />}{tab === 'routes' && <AdminRoutesView token={token} setNotice={setNotice} />}{tab === 'trains' && <AdminTrainsView token={token} setNotice={setNotice} />}{tab === 'cars' && <AdminCarsView token={token} setNotice={setNotice} />}{tab === 'seats' && <AdminSeatsView token={token} setNotice={setNotice} />}{tab === 'schedules' && <AdminSchedulesView token={token} setNotice={setNotice} />}{tab === 'reservations' && <ReservationsView token={token} admin setNotice={setNotice} />}</section>;
 }
 
 function AdminStationsView({ token, setNotice }: { token: string; setNotice: (notice: Notice) => void }) {

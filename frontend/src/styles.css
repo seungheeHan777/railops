@@ -7,6 +7,36 @@
   -webkit-font-smoothing: antialiased;
 }
 
+.reservation-view { display: grid; gap: 16px; margin-top: 24px; min-width: 0; }
+.reservation-toolbar, .reservation-pagination, .reservation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.reservation-toolbar h3 { margin: 0 auto 0 0; font-size: 18px; }
+.reservation-toolbar .field { min-width: 150px; }
+.reservation-pagination { justify-content: flex-end; }
+.reservation-detail { display: grid; gap: 16px; padding-top: 20px; border-top: 1px solid #d7e0e8; min-width: 0; }
+.reservation-number { display: block; max-width: 180px; overflow-wrap: anywhere; font-family: monospace; }
+.reservation-table .status-badge { white-space: nowrap; }
+.reservation-seat-table { min-width: 0; table-layout: fixed; }
+.reservation-seat-table th, .reservation-seat-table td { overflow-wrap: anywhere; }
+.reservation-seat-table th { word-break: keep-all; }
+.reservation-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0; }
+.reservation-facts dt { color: #566478; font-size: 13px; }
+.reservation-facts dd { margin: 6px 0 0; overflow-wrap: anywhere; }
+.danger-button.reservation-cancel { width: auto; padding: 0 14px; white-space: normal; }
+.status-badge.confirmed { color: #174f36; background: #e7f5ee; }
+.status-badge.pending_payment { color: #684f13; background: #fff2c2; }
+.status-badge.expired, .status-badge.payment_failed { color: #7d2230; background: #ffe1e5; }
+@media (max-width: 620px) {
+  .reservation-facts { grid-template-columns: 1fr; }
+  .reservation-table, .reservation-table tbody, .reservation-table tr { display: block; min-width: 0; }
+  .reservation-table thead { display: none; }
+  .reservation-table tr + tr { border-top: 2px solid #d7e0e8; }
+  .reservation-table td[data-label] { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: center; gap: 12px; text-align: right; overflow-wrap: anywhere; }
+  .reservation-table td[data-label]::before { content: attr(data-label); text-align: left; color: #566478; font-size: 13px; }
+  .reservation-table td[data-label] > * { justify-self: end; }
+  .reservation-number { max-width: 100%; }
+  .nav-tabs, .admin-tabs { flex-wrap: wrap; overflow-x: visible; }
+}
+
 * {
   box-sizing: border-box;
 }

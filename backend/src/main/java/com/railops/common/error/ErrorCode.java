@@ -34,6 +34,8 @@ public enum ErrorCode {
     RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "RESERVATION_NOT_FOUND", "예매 정보를 찾을 수 없습니다."),
     RESERVATION_NOT_OWNED(HttpStatus.FORBIDDEN, "RESERVATION_NOT_OWNED", "본인 예매만 조회하거나 변경할 수 있습니다."),
     RESERVATION_NOT_PENDING_PAYMENT(HttpStatus.CONFLICT, "RESERVATION_NOT_PENDING_PAYMENT", "결제 대기 상태의 예매가 아닙니다."),
+    RESERVATION_NOT_CANCELABLE(HttpStatus.CONFLICT, "RESERVATION_NOT_CANCELABLE", "취소할 수 없는 예매입니다."),
+    DEPARTURE_PASSED(HttpStatus.CONFLICT, "DEPARTURE_PASSED", "출발 시각이 지나 처리할 수 없습니다."),
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "결제 정보를 찾을 수 없습니다."),
     PAYMENT_NOT_READY(HttpStatus.CONFLICT, "PAYMENT_NOT_READY", "결제 대기 상태가 아닙니다."),
     PAYMENT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "PAYMENT_ALREADY_PROCESSED", "이미 처리된 결제입니다."),

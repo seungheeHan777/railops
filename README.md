@@ -120,3 +120,5 @@ Codex와 후속 에이전트는 작업 전에 루트의 `AGENTS.md`와 `TODO.md`
 - `docs/32-payment-simulation-implementation-notes.md`: Payment 시뮬레이션과 예매/좌석 상태 확정 구현 기록
 - `docs/33-fare-policy-notes.md`: 1차 단일 기본요금 정책과 향후 가격 테이블 확장 방향 기록
 - `docs/34-current-progress-summary.md`: 현재 구현/DB/프론트/다음 작업 진행상황 요약
+- `docs/35-reservation-management.md`: 기본요금, 예매 조회/취소/환불 API 및 정합성 기준
+- `docs/36-work-report-20261018.md`: 2026-10-18 작업 결과, 검증, 남은 문제와 주의사항

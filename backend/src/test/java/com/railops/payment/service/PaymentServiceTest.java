@@ -18,6 +18,7 @@ import com.railops.reservation.repository.ReservationSeatRepository;
 import com.railops.route.domain.Route;
 import com.railops.schedule.domain.TrainSchedule;
 import com.railops.seat.domain.ScheduleSeat;
+import com.railops.seat.repository.ScheduleSeatRepository;
 import com.railops.seat.domain.ScheduleSeatStatus;
 import com.railops.station.domain.Station;
 import com.railops.train.domain.Car;
@@ -54,18 +55,22 @@ class PaymentServiceTest {
     @Mock
     private ReservationSeatRepository reservationSeatRepository;
 
+    @Mock
+    private ScheduleSeatRepository scheduleSeatRepository;
+
     private PaymentService paymentService;
 
     @BeforeEach
     void setUp() {
-        paymentService = new PaymentService(paymentRepository, reservationSeatRepository, FIXED_CLOCK);
+        paymentService = new PaymentService(paymentRepository, reservationSeatRepository, scheduleSeatRepository, FIXED_CLOCK);
     }
 
     @Test
     void simulateSuccessConfirmsReservationAndReservesSeat() {
         Fixtures fixtures = fixtures(LocalDateTime.of(2026, 8, 1, 0, 10));
         when(paymentRepository.findByIdForUpdate(600L)).thenReturn(Optional.of(fixtures.payment));
-        when(reservationSeatRepository.findByReservationIdForPayment(500L)).thenReturn(List.of(fixtures.reservationSeat));
+        when(reservationSeatRepository.findScheduleSeatIds(500L)).thenReturn(List.of(1000L));
+        when(scheduleSeatRepository.findAllByIdInForUpdate(List.of(1000L))).thenReturn(List.of(fixtures.scheduleSeat));
 
         PaymentResultResponse response = paymentService.simulateSuccess(UserPrincipal.from(fixtures.user), 600L);
 
@@ -79,7 +84,8 @@ class PaymentServiceTest {
     void simulateFailMarksReservationFailedAndReleasesSeat() {
         Fixtures fixtures = fixtures(LocalDateTime.of(2026, 8, 1, 0, 10));
         when(paymentRepository.findByIdForUpdate(600L)).thenReturn(Optional.of(fixtures.payment));
-        when(reservationSeatRepository.findByReservationIdForPayment(500L)).thenReturn(List.of(fixtures.reservationSeat));
+        when(reservationSeatRepository.findScheduleSeatIds(500L)).thenReturn(List.of(1000L));
+        when(scheduleSeatRepository.findAllByIdInForUpdate(List.of(1000L))).thenReturn(List.of(fixtures.scheduleSeat));
 
         PaymentResultResponse response = paymentService.simulateFail(UserPrincipal.from(fixtures.user), 600L);
 
@@ -92,7 +98,8 @@ class PaymentServiceTest {
     void simulateSuccessExpiresWhenHoldIsExpired() {
         Fixtures fixtures = fixtures(LocalDateTime.of(2026, 7, 31, 23, 59));
         when(paymentRepository.findByIdForUpdate(600L)).thenReturn(Optional.of(fixtures.payment));
-        when(reservationSeatRepository.findByReservationIdForPayment(500L)).thenReturn(List.of(fixtures.reservationSeat));
+        when(reservationSeatRepository.findScheduleSeatIds(500L)).thenReturn(List.of(1000L));
+        when(scheduleSeatRepository.findAllByIdInForUpdate(List.of(1000L))).thenReturn(List.of(fixtures.scheduleSeat));
 
         assertThatThrownBy(() -> paymentService.simulateSuccess(UserPrincipal.from(fixtures.user), 600L))
             .isInstanceOf(BusinessException.class)

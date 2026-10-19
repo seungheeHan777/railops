@@ -132,6 +132,8 @@ create table reservations (
     confirmed_at timestamp,
     canceled_at timestamp,
     expired_at timestamp,
+    refunded_at timestamp,
+    refunded_amount numeric(12, 2),
     updated_at timestamp not null default now(),
     constraint chk_reservations_status check (status in ('PENDING_PAYMENT', 'CONFIRMED', 'CANCELED', 'EXPIRED', 'PAYMENT_FAILED')),
     constraint chk_reservations_total_amount check (total_amount >= 0)
@@ -159,7 +161,7 @@ create table payments (
     expired_at timestamp,
     created_at timestamp not null default now(),
     updated_at timestamp not null default now(),
-    constraint chk_payments_status check (status in ('READY', 'SUCCESS', 'FAILED', 'CANCELED', 'EXPIRED')),
+    constraint chk_payments_status check (status in ('READY', 'SUCCESS', 'FAILED', 'CANCELED', 'EXPIRED', 'REFUNDED')),
     constraint chk_payments_amount check (amount >= 0)
 );
 

@@ -126,7 +126,7 @@ class ScheduleSeatServiceTest {
             scheduleWithId(10L, train),
             seatWithId(100L, carWithId(20L, train, 1), "12A", SeatType.WINDOW)
         );
-        when(scheduleSeatRepository.findById(1000L)).thenReturn(Optional.of(scheduleSeat));
+        when(scheduleSeatRepository.findByIdForUpdate(1000L)).thenReturn(Optional.of(scheduleSeat));
 
         ScheduleSeatResponse response = scheduleSeatService.block(1000L);
 
@@ -142,7 +142,7 @@ class ScheduleSeatServiceTest {
             seatWithId(100L, carWithId(20L, train, 1), "12A", SeatType.WINDOW)
         );
         scheduleSeat.block();
-        when(scheduleSeatRepository.findById(1000L)).thenReturn(Optional.of(scheduleSeat));
+        when(scheduleSeatRepository.findByIdForUpdate(1000L)).thenReturn(Optional.of(scheduleSeat));
 
         ScheduleSeatResponse response = scheduleSeatService.unblock(1000L);
 
@@ -151,7 +151,7 @@ class ScheduleSeatServiceTest {
 
     @Test
     void blockRejectsMissingScheduleSeat() {
-        when(scheduleSeatRepository.findById(1000L)).thenReturn(Optional.empty());
+        when(scheduleSeatRepository.findByIdForUpdate(1000L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> scheduleSeatService.block(1000L))
             .isInstanceOf(BusinessException.class)

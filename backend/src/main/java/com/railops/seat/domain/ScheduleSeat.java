@@ -110,7 +110,7 @@ public class ScheduleSeat {
     public boolean isExpiredHold(LocalDateTime now) {
         return status == ScheduleSeatStatus.HELD
             && holdExpiresAt != null
-            && holdExpiresAt.isBefore(now);
+            && !holdExpiresAt.isAfter(now);
     }
 
     public Long getId() {

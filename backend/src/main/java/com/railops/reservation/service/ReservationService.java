@@ -1,14 +1,13 @@
 package com.railops.reservation.service;
 
 import com.railops.auth.security.UserPrincipal;
+import com.railops.config.FareProperties;
 import com.railops.common.error.BusinessException;
 import com.railops.common.error.ErrorCode;
 import com.railops.payment.domain.Payment;
-import com.railops.payment.domain.PaymentStatus;
 import com.railops.payment.repository.PaymentRepository;
 import com.railops.reservation.domain.Reservation;
 import com.railops.reservation.domain.ReservationSeat;
-import com.railops.reservation.domain.ReservationStatus;
 import com.railops.reservation.dto.ReservationHoldRequest;
 import com.railops.reservation.dto.ReservationHoldResponse;
 import com.railops.reservation.repository.ReservationRepository;
@@ -24,9 +23,9 @@ import com.railops.user.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,8 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReservationService {
 
     private static final long HOLD_MINUTES = 10;
-    private static final BigDecimal TEMPORARY_PRICE = BigDecimal.ZERO;
-    private static final DateTimeFormatter NUMBER_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final ReservationRepository reservationRepository;
     private final ReservationSeatRepository reservationSeatRepository;
@@ -45,6 +42,7 @@ public class ReservationService {
     private final ScheduleSeatRepository scheduleSeatRepository;
     private final UserRepository userRepository;
     private final Clock clock;
+    private final FareProperties fares;
 
     public ReservationService(
         ReservationRepository reservationRepository,
@@ -53,7 +51,8 @@ public class ReservationService {
         TrainScheduleRepository trainScheduleRepository,
         ScheduleSeatRepository scheduleSeatRepository,
         UserRepository userRepository,
-        Clock clock
+        Clock clock,
+        FareProperties fares
     ) {
         this.reservationRepository = reservationRepository;
         this.reservationSeatRepository = reservationSeatRepository;
@@ -62,6 +61,7 @@ public class ReservationService {
         this.scheduleSeatRepository = scheduleSeatRepository;
         this.userRepository = userRepository;
         this.clock = clock;
+        this.fares = fares;
     }
 
     @Transactional
@@ -73,9 +73,10 @@ public class ReservationService {
         validateBookable(schedule);
 
         List<Long> scheduleSeatIds = distinctIds(request.scheduleSeatIds());
-        LocalDateTime now = LocalDateTime.now(clock);
-        LocalDateTime holdExpiresAt = now.plusMinutes(HOLD_MINUTES);
         List<ScheduleSeat> scheduleSeats = scheduleSeatRepository.findAllByIdInForUpdate(scheduleSeatIds);
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (!schedule.getDepartureTime().isAfter(now)) throw new BusinessException(ErrorCode.DEPARTURE_PASSED);
+        LocalDateTime holdExpiresAt = now.plusMinutes(HOLD_MINUTES);
         if (scheduleSeats.size() != scheduleSeatIds.size()) {
             throw new BusinessException(ErrorCode.SCHEDULE_SEAT_NOT_FOUND);
         }
@@ -85,12 +86,13 @@ public class ReservationService {
             scheduleSeat.hold(user, holdExpiresAt);
         }
 
-        BigDecimal amount = TEMPORARY_PRICE.multiply(BigDecimal.valueOf(scheduleSeats.size()));
+        BigDecimal price = fares.defaultSeatPrice();
+        BigDecimal amount = price.multiply(BigDecimal.valueOf(scheduleSeats.size()));
         Reservation reservation = reservationRepository.save(
             Reservation.createPendingPayment(generateReservationNo(user.getId(), now), user, schedule, amount, holdExpiresAt)
         );
         reservationSeatRepository.saveAll(scheduleSeats.stream()
-            .map(scheduleSeat -> ReservationSeat.create(reservation, scheduleSeat, TEMPORARY_PRICE))
+            .map(scheduleSeat -> ReservationSeat.create(reservation, scheduleSeat, price))
             .toList());
         Payment payment = paymentRepository.save(
             Payment.createReady(reservation, generatePaymentNo(user.getId(), now), amount, now)
@@ -107,24 +109,6 @@ public class ReservationService {
             amount,
             holdExpiresAt
         );
-    }
-
-    @Transactional
-    public int expireHolds() {
-        LocalDateTime now = LocalDateTime.now(clock);
-        int expiredPayments = paymentRepository.expireReadyPayments(
-            PaymentStatus.READY,
-            PaymentStatus.EXPIRED,
-            ReservationStatus.PENDING_PAYMENT,
-            now
-        );
-        int expiredReservations = reservationRepository.expirePendingReservations(
-            ReservationStatus.PENDING_PAYMENT,
-            ReservationStatus.EXPIRED,
-            now
-        );
-        int releasedSeats = scheduleSeatRepository.releaseExpiredHolds(now);
-        return expiredPayments + expiredReservations + releasedSeats;
     }
 
     private void validateBookable(TrainSchedule schedule) {
@@ -155,14 +139,14 @@ public class ReservationService {
     }
 
     private List<Long> distinctIds(List<Long> ids) {
-        return new LinkedHashSet<>(ids).stream().toList();
+        return new LinkedHashSet<>(ids).stream().sorted().toList();
     }
 
     private String generateReservationNo(Long userId, LocalDateTime now) {
-        return "R" + now.format(NUMBER_TIME_FORMAT) + "U" + userId;
+        return "R" + UUID.randomUUID().toString().replace("-", "");
     }
 
     private String generatePaymentNo(Long userId, LocalDateTime now) {
-        return "P" + now.format(NUMBER_TIME_FORMAT) + "U" + userId;
+        return "P" + UUID.randomUUID().toString().replace("-", "");
     }
 }

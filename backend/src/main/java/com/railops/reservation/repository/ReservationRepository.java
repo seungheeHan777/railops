@@ -2,25 +2,20 @@ package com.railops.reservation.repository;
 
 import com.railops.reservation.domain.Reservation;
 import com.railops.reservation.domain.ReservationStatus;
-import java.time.LocalDateTime;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
-
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @EntityGraph(attributePaths = {"user", "trainSchedule", "trainSchedule.train",
+        "trainSchedule.route", "trainSchedule.route.originStation", "trainSchedule.route.destinationStation"})
     @Query("""
-        update Reservation reservation
-        set reservation.status = :expiredStatus,
-            reservation.updatedAt = :now
-        where reservation.status = :pendingStatus
-          and reservation.holdExpiresAt < :now
+        select r from Reservation r
+        where (:userId is null or r.user.id = :userId)
+          and (:status is null or r.status = :status)
         """)
-    int expirePendingReservations(
-        @Param("pendingStatus") ReservationStatus pendingStatus,
-        @Param("expiredStatus") ReservationStatus expiredStatus,
-        @Param("now") LocalDateTime now
-    );
+    Page<Reservation> findPage(@Param("userId") Long userId, @Param("status") ReservationStatus status, Pageable pageable);
 }

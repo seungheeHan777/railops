@@ -10,7 +10,9 @@
 모든 좌석 가격 = 단일 기본요금
 ```
 
-현재 코드의 `ReservationSeat.price`, `Reservation.totalAmount`, `Payment.amount`는 나중에 이 단일 기본요금 계산 결과로 채웁니다.
+2026-10-18 구현: 개발 기본요금은 50,000원이며 `RAILOPS_DEFAULT_SEAT_PRICE` 환경변수로 바꿀 수 있습니다. 양의 정수 원화만 허용합니다. `ReservationSeat.price`에는 좌석당 기본요금, `Reservation.totalAmount`와 `Payment.amount`에는 좌석 수를 곱한 금액을 저장합니다.
+
+이전 버전에서 생성된 0원 예매는 거래 이력으로 유지합니다. 설정 변경은 새 예매부터 적용됩니다. 금액은 개발 기본값이며 실제 서비스 요금은 별도 확정이 필요합니다.
 
 ## 왜 이렇게 시작하는가
 
@@ -80,12 +82,9 @@ value = 50000
 ReservationSeat.price = 예약 당시 확정 가격 기록
 ```
 
-## 다음 구현 시 할 일
+## 현재 구현과 후속 작업
 
 ```text
-1. 단일 기본요금 저장 위치 결정
-2. HOLD 생성 시 좌석 수 * 기본요금으로 totalAmount 계산
-3. ReservationSeat.price에 좌석별 기본요금 저장
-4. Payment.amount에 Reservation.totalAmount 저장
-5. 문서와 테스트에서 임시 amount=0 제거
+완료: FareProperties 설정, HOLD 시 금액 계산, 좌석별 가격 스냅샷, 결제 금액 저장, 가격 검증 테스트.
+후속: 실제 기본요금 확정, 필요할 때 가격 테이블/관리자 변경 기능 추가.
 ```

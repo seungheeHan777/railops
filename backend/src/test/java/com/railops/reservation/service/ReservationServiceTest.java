@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.railops.auth.security.UserPrincipal;
+import com.railops.config.FareProperties;
+import java.math.BigDecimal;
 import com.railops.common.error.BusinessException;
 import com.railops.common.error.ErrorCode;
 import com.railops.payment.domain.Payment;
@@ -85,7 +87,8 @@ class ReservationServiceTest {
             trainScheduleRepository,
             scheduleSeatRepository,
             userRepository,
-            FIXED_CLOCK
+            FIXED_CLOCK,
+            new FareProperties(new BigDecimal("50000"))
         );
     }
 
@@ -120,6 +123,7 @@ class ReservationServiceTest {
 
         assertThat(response.reservationId()).isEqualTo(500L);
         assertThat(response.paymentId()).isEqualTo(600L);
+        assertThat(response.amount()).isEqualByComparingTo("100000");
         assertThat(response.status()).isEqualTo(ReservationStatus.PENDING_PAYMENT);
         assertThat(response.scheduleId()).isEqualTo(100L);
         assertThat(response.scheduleSeatIds()).containsExactly(1000L, 1001L);
@@ -133,6 +137,7 @@ class ReservationServiceTest {
         List<ReservationSeat> savedReservationSeats = new ArrayList<>();
         captor.getValue().forEach(savedReservationSeats::add);
         assertThat(savedReservationSeats).hasSize(2);
+        assertThat(savedReservationSeats).allSatisfy(s -> assertThat(s.getPrice()).isEqualByComparingTo("50000"));
     }
 
     @Test
@@ -183,26 +188,6 @@ class ReservationServiceTest {
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode")
             .isEqualTo(ErrorCode.SCHEDULE_SEAT_NOT_FOUND);
-    }
-
-    @Test
-    void expireHoldsExpiresPaymentsReservationsAndReleasesSeats() {
-        when(paymentRepository.expireReadyPayments(
-            PaymentStatus.READY,
-            PaymentStatus.EXPIRED,
-            ReservationStatus.PENDING_PAYMENT,
-            LocalDateTime.of(2026, 8, 1, 0, 0)
-        )).thenReturn(1);
-        when(reservationRepository.expirePendingReservations(
-            ReservationStatus.PENDING_PAYMENT,
-            ReservationStatus.EXPIRED,
-            LocalDateTime.of(2026, 8, 1, 0, 0)
-        )).thenReturn(2);
-        when(scheduleSeatRepository.releaseExpiredHolds(LocalDateTime.of(2026, 8, 1, 0, 0))).thenReturn(3);
-
-        int affectedRows = reservationService.expireHolds();
-
-        assertThat(affectedRows).isEqualTo(6);
     }
 
     private User userWithId(Long id) {

@@ -294,7 +294,7 @@ Response DTO: `ReservationHoldResponse`
   "paymentId": 200,
   "paymentNo": "P202608010001",
   "status": "PENDING_PAYMENT",
-  "amount": 120000,
+  "amount": 100000,
   "holdExpiresAt": "2026-08-01T09:10:00"
 }
 ```
@@ -311,12 +311,14 @@ Response DTO: `ReservationHoldResponse`
 ### 내 예매 목록
 
 ```http
-GET /api/reservations/me
+GET /api/reservations?page=0&size=20&status=CONFIRMED
 ```
 
 권한: 로그인 사용자
 
-Response DTO: `ReservationSummaryResponse[]`
+Response DTO: `PageResponse<ReservationSummaryResponse>`
+
+`status`는 생략할 수 있다. page는 0부터 시작하며 size는 1~100이다. 응답 필드는 content/page/size/totalElements/totalPages이다.
 
 ### 예매 상세
 
@@ -324,7 +326,7 @@ Response DTO: `ReservationSummaryResponse[]`
 GET /api/reservations/{reservationId}
 ```
 
-권한: 본인 또는 ADMIN
+권한: 본인. ADMIN이 다른 회원 예매를 조회할 때는 `/api/admin/reservations/{reservationId}`를 사용한다.
 
 Response DTO: `ReservationDetailResponse`
 
@@ -334,14 +336,19 @@ Response DTO: `ReservationDetailResponse`
 POST /api/reservations/{reservationId}/cancel
 ```
 
-권한: 본인 또는 ADMIN
+권한: 본인
 
 Response DTO: `ReservationDetailResponse`
 
 정책:
 
-- 출발 전 예매만 취소 가능
-- 1차 구현에서는 결제 완료 후 환불 상태를 단순화
+- 결제 전 취소: 예매 CANCELED, 결제 CANCELED, 해당 HOLD만 해제
+- 결제 후 출발 전 취소: 예매 CANCELED, 결제 REFUNDED, 전액 가상 환불, 좌석 반환
+- 만료된 결제 대기 예매에 취소를 요청하면 EXPIRED로 정리하여 응답
+- 같은 취소 요청을 반복해도 추가 환불하지 않음
+- 부분 취소와 실제 결제사 환불은 미지원
+
+상세 응답의 `reservation`에는 예매 요약, `seats`에는 객차/좌석/예매 당시 가격, `payment`에는 결제 상태/금액/refundedAmount/refundedAt을 담는다. `canCancel`, `canPay`로 화면 버튼 표시 여부를 전달하며 서버에서도 매번 재검증한다. 상세 계약은 `docs/35-reservation-management.md` 참고.
 
 ## Payment API
 
@@ -633,6 +640,8 @@ Response DTO: `ScheduleSeatResponse`
 GET /api/admin/reservations
 GET /api/admin/reservations/{reservationId}
 ```
+
+목록은 `page`, `size`, `status` 쿼리를 지원하며 `PageResponse<ReservationSummaryResponse>`를 반환한다. 상세는 `ReservationDetailResponse`를 반환한다. 관리자 API는 조회 전용이며 사용자 취소 API의 소유권 검증을 우회하지 않는다.
 
 ### 운영 로그 조회
 

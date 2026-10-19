@@ -161,7 +161,7 @@ export type ReservationHoldPayload = {
 
 export type ReservationStatus = 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELED' | 'EXPIRED' | 'PAYMENT_FAILED';
 
-export type PaymentStatus = 'READY' | 'SUCCESS' | 'FAILED' | 'CANCELED' | 'EXPIRED';
+export type PaymentStatus = 'READY' | 'SUCCESS' | 'FAILED' | 'CANCELED' | 'EXPIRED' | 'REFUNDED';
 
 export type ReservationHoldResponse = {
   reservationId: number | null;
@@ -183,4 +183,17 @@ export type PaymentResultResponse = {
   reservationStatus: ReservationStatus;
   amount: number;
   processedAt: string;
+};
+
+export type PageResult<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number };
+export type ReservationSummary = {
+  id: number; reservationNo: string; userId: number; userName: string; scheduleId: number;
+  trainNo: string; origin: string; destination: string; departureTime: string; arrivalTime: string;
+  status: ReservationStatus; totalAmount: number; holdExpiresAt: string; createdAt: string;
+};
+export type ReservationDetail = {
+  reservation: ReservationSummary;
+  seats: { scheduleSeatId: number; carNo: number; seatNo: string; price: number }[];
+  payment: { id: number; paymentNo: string; status: PaymentStatus; amount: number; refundedAmount: number; refundedAt: string | null };
+  canCancel: boolean; canPay: boolean;
 };

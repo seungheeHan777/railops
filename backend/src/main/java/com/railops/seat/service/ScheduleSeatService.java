@@ -5,6 +5,7 @@ import com.railops.common.error.ErrorCode;
 import com.railops.schedule.domain.TrainSchedule;
 import com.railops.schedule.repository.TrainScheduleRepository;
 import com.railops.seat.domain.ScheduleSeat;
+import com.railops.seat.domain.ScheduleSeatStatus;
 import com.railops.seat.dto.CarSeatResponse;
 import com.railops.seat.dto.ScheduleSeatMapResponse;
 import com.railops.seat.dto.ScheduleSeatResponse;
@@ -71,6 +72,7 @@ public class ScheduleSeatService {
     @Transactional
     public ScheduleSeatResponse block(Long scheduleSeatId) {
         ScheduleSeat scheduleSeat = getScheduleSeat(scheduleSeatId);
+        if (scheduleSeat.getStatus() != ScheduleSeatStatus.AVAILABLE) throw new BusinessException(ErrorCode.SEAT_NOT_AVAILABLE);
         scheduleSeat.block();
         return ScheduleSeatResponse.from(scheduleSeat);
     }
@@ -78,6 +80,7 @@ public class ScheduleSeatService {
     @Transactional
     public ScheduleSeatResponse unblock(Long scheduleSeatId) {
         ScheduleSeat scheduleSeat = getScheduleSeat(scheduleSeatId);
+        if (scheduleSeat.getStatus() != ScheduleSeatStatus.BLOCKED) throw new BusinessException(ErrorCode.SEAT_NOT_AVAILABLE);
         scheduleSeat.unblock();
         return ScheduleSeatResponse.from(scheduleSeat);
     }
@@ -88,7 +91,7 @@ public class ScheduleSeatService {
     }
 
     private ScheduleSeat getScheduleSeat(Long scheduleSeatId) {
-        return scheduleSeatRepository.findById(scheduleSeatId)
+        return scheduleSeatRepository.findByIdForUpdate(scheduleSeatId)
             .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_SEAT_NOT_FOUND));
     }
 
