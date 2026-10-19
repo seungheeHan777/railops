@@ -332,6 +332,8 @@ class ReservationPostgresIntegrationTest {
         assertThat(audit.statusCode()).isEqualTo(200);
         assertThat(mapper.readTree(audit.body()).path("data").path("totalElements").asLong()).isGreaterThan(0);
         assertThat(audit.body()).doesNotContain("TestPass123!", "accessToken");
+        var cancellationAudit = request("GET", "/api/admin/operation-logs?action=RESERVATION_CANCELED", null, token);
+        assertThat(mapper.readTree(cancellationAudit.body()).path("data").path("totalElements").asLong()).isGreaterThan(0);
     }
 
     private HttpResponse<String> request(String method, String path, String body, String token) throws Exception {

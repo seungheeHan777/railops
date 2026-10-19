@@ -92,6 +92,7 @@ public class PaymentService {
         p.cancel(now);
         logs.record(OperationAction.PAYMENT_CANCELED, "PAYMENT", p.getId());
         p.getReservation().cancel(now);
+        logs.record(OperationAction.RESERVATION_CANCELED, "RESERVATION", p.getReservation().getId());
         releaseOwnedHolds(p.getReservation(), lockedSeats);
         return PaymentResultResponse.from(p, now);
     }
@@ -116,8 +117,9 @@ public class PaymentService {
                 expire(p, lockedSeats, now);
             } else {
                 p.cancel(now);
-        logs.record(OperationAction.PAYMENT_CANCELED, "PAYMENT", p.getId());
+                logs.record(OperationAction.PAYMENT_CANCELED, "PAYMENT", p.getId());
                 r.cancel(now);
+                logs.record(OperationAction.RESERVATION_CANCELED, "RESERVATION", r.getId());
                 releaseOwnedHolds(r, lockedSeats);
             }
         } else if (r.getStatus() == ReservationStatus.CONFIRMED && p.getStatus() == PaymentStatus.SUCCESS) {
@@ -128,6 +130,7 @@ public class PaymentService {
             p.refund(now);
             logs.record(OperationAction.PAYMENT_REFUNDED, "PAYMENT", p.getId());
             r.cancel(now);
+            logs.record(OperationAction.RESERVATION_CANCELED, "RESERVATION", r.getId());
             lockedSeats.forEach(ScheduleSeat::releaseHold);
         } else {
             throw new BusinessException(ErrorCode.RESERVATION_NOT_CANCELABLE);
@@ -169,6 +172,7 @@ public class PaymentService {
             logs.record(OperationAction.PAYMENT_CANCELED, "PAYMENT", p.getId());
         }
         r.cancel(now);
+        logs.record(OperationAction.RESERVATION_CANCELED, "RESERVATION", r.getId());
     }
 
     private Payment ownedPayment(UserPrincipal principal, Long paymentId) {

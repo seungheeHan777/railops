@@ -11,7 +11,7 @@ RailOps 프로젝트 진행 상태를 추적하는 문서입니다. Codex와 후
 - [x] 운영 로그 저장/ADMIN 조회 및 프론트 화면
 - [x] 인증/권한 실패 JSON 응답 통일
 - [x] Flyway 신규/기존 DB 전환 및 로컬 DB 적용
-- [x] Docker/Nginx/Prometheus/Grafana/CI/k6 구성 작성 (컨테이너 실구동 미검증)
+- [x] Docker/Nginx/Prometheus/Grafana/CI/k6 구성 작성 및 GitHub CI 이미지 빌드 통과 (전체 컨테이너 실구동 미검증)
 
 - [x] 현재 진행상황 요약 문서 작성: `docs/34-current-progress-summary.md`
 - [x] 단일 기본요금 설정 및 예약 당시 가격 스냅샷 구현
